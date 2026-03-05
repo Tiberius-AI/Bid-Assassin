@@ -57,11 +57,11 @@ export function AuthPage() {
   };
 
   useEffect(() => {
-    if (session) {
-      if (!profile || !profile.onboarding_completed) {
-        navigate("/onboarding");
-      } else {
+    if (session && profile) {
+      if (profile.onboarding_completed) {
         navigate("/dashboard");
+      } else {
+        navigate("/onboarding");
       }
     }
   }, [session, profile, navigate]);

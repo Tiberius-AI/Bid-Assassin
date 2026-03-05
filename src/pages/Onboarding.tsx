@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -60,10 +60,17 @@ const STEPS = [
 ];
 
 export default function Onboarding() {
-  const { session, refreshProfile, refreshCompany } = useSession();
+  const { session, profile, refreshProfile, refreshCompany } = useSession();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+
+  // If onboarding is already done, skip straight to dashboard
+  useEffect(() => {
+    if (session && profile?.onboarding_completed) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [session, profile, navigate]);
 
   // Step 1: Company Info
   const [companyName, setCompanyName] = useState("");
