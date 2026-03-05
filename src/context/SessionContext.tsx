@@ -42,21 +42,54 @@ export const SessionProvider = ({ children }: Props) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
-    if (data) setProfile(data as Profile);
+
+    if (error) {
+      console.error("fetchProfile error:", error.message, error.details);
+    }
+
+    // If no profile exists (trigger may not have fired), create one
+    if (!data) {
+      console.warn("No profile found — creating fallback profile for", userId);
+      const { data: sessionData } = await supabase.auth.getUser();
+      const user = sessionData?.user;
+      const { data: newProfile, error: insertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          email: user?.email ?? "",
+          full_name: user?.user_metadata?.full_name ?? "",
+          onboarding_completed: false,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Failed to create fallback profile:", insertError.message);
+        return null;
+      }
+      if (newProfile) setProfile(newProfile as Profile);
+      return newProfile as Profile | null;
+    }
+
+    setProfile(data as Profile);
     return data as Profile | null;
   }, []);
 
   const fetchCompany = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("companies")
       .select("*")
       .eq("profile_id", userId)
       .single();
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = "no rows returned" which is expected if no company yet
+      console.error("fetchCompany error:", error.message, error.details);
+    }
     if (data) setCompany(data as Company);
     return data as Company | null;
   }, []);

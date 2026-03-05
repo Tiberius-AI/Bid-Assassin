@@ -57,8 +57,8 @@ export function AuthPage() {
   };
 
   useEffect(() => {
-    if (session && profile) {
-      if (!profile.onboarding_completed) {
+    if (session) {
+      if (!profile || !profile.onboarding_completed) {
         navigate("/onboarding");
       } else {
         navigate("/dashboard");
