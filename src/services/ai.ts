@@ -8,11 +8,21 @@ const ANTHROPIC_PROXY = import.meta.env.DEV
 
 interface AnthropicMessage {
   role: "user" | "assistant";
-  content: string;
+  content: string | Array<{ type: string; [key: string]: unknown }>;
+}
+
+interface ContentBlock {
+  type: string;
+  text?: string;
+  id?: string;
+  name?: string;
+  input?: unknown;
+  content?: unknown;
 }
 
 interface AnthropicResponse {
-  content: Array<{ type: string; text?: string }>;
+  content: ContentBlock[];
+  stop_reason?: string;
 }
 
 async function callClaude(
@@ -37,9 +47,68 @@ async function callClaude(
     throw new Error(`Claude API error: ${res.status} - ${errorText}`);
   }
 
-  const data: AnthropicResponse = await res.json();
-  const textBlock = data.content.find((b) => b.type === "text");
-  return textBlock?.text || "";
+  let data: AnthropicResponse = await res.json();
+
+  // If Claude wants to use a tool (web search), we need to continue the conversation
+  // by sending back the tool results. The server-side search tool is handled by Anthropic
+  // so we just need to handle the multi-turn response pattern.
+  let currentMessages = [...messages];
+  let iterations = 0;
+
+  while (data.stop_reason === "tool_use" && iterations < 5) {
+    iterations++;
+    console.log(`Tool use iteration ${iterations}, processing tool calls...`);
+
+    // Add the assistant's response (with tool_use blocks) to the conversation
+    currentMessages = [
+      ...currentMessages,
+      { role: "assistant" as const, content: data.content as Array<{ type: string; [key: string]: unknown }> },
+    ];
+
+    // Find tool_use blocks and create tool_result responses
+    const toolResults: Array<{ type: string; tool_use_id: string; content: string }> = [];
+    for (const block of data.content) {
+      if (block.type === "tool_use" && block.id) {
+        // For server-side tools like web_search, Anthropic handles execution,
+        // but if we get tool_use, we need to let the API know to continue
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: "Continue with the search results.",
+        });
+      }
+    }
+
+    if (toolResults.length === 0) break;
+
+    currentMessages = [
+      ...currentMessages,
+      { role: "user" as const, content: toolResults as Array<{ type: string; [key: string]: unknown }> },
+    ];
+
+    const continueRes = await fetch(ANTHROPIC_PROXY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: options?.max_tokens || 4096,
+        system: systemPrompt,
+        messages: currentMessages,
+        ...(options?.tools ? { tools: options.tools } : {}),
+      }),
+    });
+
+    if (!continueRes.ok) {
+      const errorText = await continueRes.text();
+      throw new Error(`Claude API error: ${continueRes.status} - ${errorText}`);
+    }
+
+    data = await continueRes.json();
+  }
+
+  // Extract all text blocks from the final response
+  const textBlocks = data.content.filter((b) => b.type === "text" && b.text);
+  return textBlocks.map((b) => b.text).join("\n") || "";
 }
 
 function buildSystemPrompt(company: Company): string {
