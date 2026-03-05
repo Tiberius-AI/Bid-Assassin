@@ -113,66 +113,101 @@ export default function Onboarding() {
     if (!session?.user?.id) return;
     setSaving(true);
 
-    // Safety net: never stay stuck on "Saving..." for more than 15 seconds
-    const timeout = setTimeout(() => {
-      setSaving(false);
-      toast.error("Save timed out. Check your internet connection and try again.");
-    }, 15000);
-
     try {
-      console.log("Onboarding: saving company for user", session.user.id);
+      const userId = session.user.id;
+      console.log("Onboarding: starting save for user", userId);
 
-      // Upsert company (handles retry if a previous attempt partially succeeded)
-      const { error: companyError } = await supabase.from("companies").upsert(
-        {
-          profile_id: session.user.id,
-          name: companyName,
-          address,
-          city,
-          state,
-          zip,
-          phone,
-          email,
-          website,
-          trades,
-          certifications,
-          license_number: licenseNumber,
-          insurance_provider: insuranceProvider,
-          insurance_policy_number: insurancePolicyNumber,
-          proposal_tone: proposalTone,
-          default_payment_terms: paymentTerms,
-          default_warranty_terms: warrantyTerms,
-        },
-        { onConflict: "profile_id" }
-      );
-      if (companyError) {
-        console.error("Company save error:", companyError);
-        throw new Error(companyError.message || "Failed to save company");
+      // Step 1: Check if company already exists
+      const { data: existingCompany, error: checkError } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("profile_id", userId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Company check error:", checkError);
       }
-      console.log("Onboarding: company saved, updating profile...");
 
-      // Mark onboarding complete
+      // Step 2: Create or update company
+      if (existingCompany) {
+        console.log("Onboarding: company exists, updating...");
+        const { error: updateError } = await supabase
+          .from("companies")
+          .update({
+            name: companyName,
+            address,
+            city,
+            state,
+            zip,
+            phone,
+            email,
+            website,
+            trades,
+            certifications,
+            license_number: licenseNumber,
+            insurance_provider: insuranceProvider,
+            insurance_policy_number: insurancePolicyNumber,
+            proposal_tone: proposalTone,
+            default_payment_terms: paymentTerms,
+            default_warranty_terms: warrantyTerms,
+          })
+          .eq("profile_id", userId);
+        if (updateError) {
+          console.error("Company update error:", updateError);
+          throw new Error(updateError.message || "Failed to update company");
+        }
+      } else {
+        console.log("Onboarding: creating new company...");
+        const { error: insertError } = await supabase
+          .from("companies")
+          .insert({
+            profile_id: userId,
+            name: companyName,
+            address,
+            city,
+            state,
+            zip,
+            phone,
+            email,
+            website,
+            trades,
+            certifications,
+            license_number: licenseNumber,
+            insurance_provider: insuranceProvider,
+            insurance_policy_number: insurancePolicyNumber,
+            proposal_tone: proposalTone,
+            default_payment_terms: paymentTerms,
+            default_warranty_terms: warrantyTerms,
+          });
+        if (insertError) {
+          console.error("Company insert error:", insertError);
+          throw new Error(insertError.message || "Failed to create company");
+        }
+      }
+      console.log("Onboarding: company saved successfully");
+
+      // Step 3: Mark onboarding complete
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ onboarding_completed: true })
-        .eq("id", session.user.id);
+        .eq("id", userId);
       if (profileError) {
         console.error("Profile update error:", profileError);
         throw new Error(profileError.message || "Failed to update profile");
       }
-      console.log("Onboarding: profile updated, refreshing context...");
+      console.log("Onboarding: profile updated, refreshing...");
 
+      // Step 4: Refresh context and navigate
       await refreshProfile();
       await refreshCompany();
 
-      clearTimeout(timeout);
       toast.success("Setup complete! Welcome to Bid Assassin.");
       setTimeout(() => navigate("/dashboard"), 100);
     } catch (err) {
-      clearTimeout(timeout);
       console.error("Onboarding save failed:", err);
       const message = err instanceof Error ? err.message : "Failed to save. Please try again.";
       toast.error(message);
+    } finally {
       setSaving(false);
     }
   };
