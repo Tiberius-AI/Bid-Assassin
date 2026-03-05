@@ -112,7 +112,16 @@ export default function Onboarding() {
   const handleFinish = async () => {
     if (!session?.user?.id) return;
     setSaving(true);
+
+    // Safety net: never stay stuck on "Saving..." for more than 15 seconds
+    const timeout = setTimeout(() => {
+      setSaving(false);
+      toast.error("Save timed out. Check your internet connection and try again.");
+    }, 15000);
+
     try {
+      console.log("Onboarding: saving company for user", session.user.id);
+
       // Upsert company (handles retry if a previous attempt partially succeeded)
       const { error: companyError } = await supabase.from("companies").upsert(
         {
@@ -140,6 +149,7 @@ export default function Onboarding() {
         console.error("Company save error:", companyError);
         throw new Error(companyError.message || "Failed to save company");
       }
+      console.log("Onboarding: company saved, updating profile...");
 
       // Mark onboarding complete
       const { error: profileError } = await supabase
@@ -150,14 +160,16 @@ export default function Onboarding() {
         console.error("Profile update error:", profileError);
         throw new Error(profileError.message || "Failed to update profile");
       }
+      console.log("Onboarding: profile updated, refreshing context...");
 
       await refreshProfile();
       await refreshCompany();
 
+      clearTimeout(timeout);
       toast.success("Setup complete! Welcome to Bid Assassin.");
-      // Small delay to let React flush state updates before navigating
       setTimeout(() => navigate("/dashboard"), 100);
     } catch (err) {
+      clearTimeout(timeout);
       console.error("Onboarding save failed:", err);
       const message = err instanceof Error ? err.message : "Failed to save. Please try again.";
       toast.error(message);
