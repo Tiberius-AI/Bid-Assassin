@@ -49,17 +49,18 @@ export const SessionProvider = ({ children }: Props) => {
       .single();
 
     if (error) {
-      console.error("fetchProfile error:", error.message, error.details);
+      console.error("fetchProfile error:", error.message, error.details, error.code);
     }
 
-    // If no profile exists (trigger may not have fired), create one
-    if (!data) {
+    // Only create a fallback profile if we got a "no rows" error (PGRST116),
+    // NOT if we got some other error like RLS violation
+    if (!data && error?.code === "PGRST116") {
       console.warn("No profile found — creating fallback profile for", userId);
       const { data: sessionData } = await supabase.auth.getUser();
       const user = sessionData?.user;
       const { data: newProfile, error: insertError } = await supabase
         .from("profiles")
-        .upsert({
+        .insert({
           id: userId,
           email: user?.email ?? "",
           full_name: user?.user_metadata?.full_name ?? "",
@@ -76,7 +77,7 @@ export const SessionProvider = ({ children }: Props) => {
       return newProfile as Profile | null;
     }
 
-    setProfile(data as Profile);
+    if (data) setProfile(data as Profile);
     return data as Profile | null;
   }, []);
 
