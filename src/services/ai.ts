@@ -273,6 +273,8 @@ export async function agentIntakeChat(
 ): Promise<{ reply: string; intakeComplete: boolean; intakeData?: Record<string, string> }> {
   const systemPrompt = `You are a friendly proposal intake assistant for ${company.name}. You need to gather information from the user to build a proposal.
 
+You have web search capabilities — use them! When a user mentions a client company, search for it to find their address, contact info, services, reviews, and any useful business intelligence. This helps you fill in gaps and tailor the proposal.
+
 You need to collect:
 1. Client info (company name, contact name, email)
 2. Project address or location
@@ -281,7 +283,7 @@ You need to collect:
 5. Special requirements (timeline, budget range, certifications needed)
 6. Anything else relevant
 
-Ask questions one or two at a time in a conversational, friendly way. Don't ask for all info at once.
+Ask questions one or two at a time in a conversational, friendly way. Don't ask for all info at once. When you know the client company name, proactively search for them online and share what you find — this shows value to the user.
 
 When you have enough information to generate a proposal, respond with the gathered data wrapped in <intake_complete> tags:
 <intake_complete>
@@ -316,7 +318,10 @@ Only include <intake_complete> when you have at minimum: client company, project
     messages.push(msg);
   }
 
-  const response = await callClaude(messages, systemPrompt);
+  const response = await callClaude(messages, systemPrompt, {
+    tools: [{ type: "web_search_20250305", name: "web_search" }],
+    max_tokens: 4096,
+  });
 
   const intakeMatch = response.match(
     /<intake_complete>([\s\S]*?)<\/intake_complete>/
