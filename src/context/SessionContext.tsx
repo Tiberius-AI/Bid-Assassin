@@ -119,16 +119,19 @@ export const SessionProvider = ({ children }: Props) => {
       }
     };
 
-    // Safety net: never stay stuck loading for more than 5 seconds
-    const timeout = setTimeout(() => {
+    // Safety net: if getSession hangs (stale tokens), clear storage and proceed
+    const timeout = setTimeout(async () => {
       if (!resolved) {
-        console.warn("Session load timed out — proceeding without session");
+        console.warn("Session load timed out — clearing stale auth and retrying");
+        // Clear any corrupted/stale auth tokens
+        await supabase.auth.signOut({ scope: "local" });
         done();
       }
     }, 5000);
 
     // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log("getSession resolved:", session ? "has session" : "no session");
       setSession(session);
       if (session?.user?.id) {
         try {
@@ -139,13 +142,16 @@ export const SessionProvider = ({ children }: Props) => {
         }
       }
       done();
-    }).catch((err) => {
+    }).catch(async (err) => {
       console.error("getSession failed:", err);
+      // Clear corrupted auth state on failure
+      await supabase.auth.signOut({ scope: "local" });
       done();
     });
 
     const authStateListener = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log("Auth state change:", _event, session ? "has session" : "no session");
         setSession(session);
         if (session?.user?.id) {
           try {
