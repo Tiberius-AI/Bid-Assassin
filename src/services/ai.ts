@@ -44,15 +44,14 @@ async function callOpenAI(
   messages: OpenAIMessage[],
   options?: { tools?: unknown[]; web_search?: boolean; max_tokens?: number }
 ): Promise<string> {
-  // Build request body
+  // Responses API uses "input" instead of "messages"
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const body: Record<string, any> = {
     model: "gpt-4o",
-    messages,
-    max_tokens: options?.max_tokens || 4096,
+    input: messages,
   };
 
-  // OpenAI web search via tools
+  // Web search via Responses API tool
   if (options?.web_search) {
     body.tools = [{ type: "web_search_preview" }];
   }
@@ -72,18 +71,23 @@ async function callOpenAI(
   }
 
   const data = await res.json();
-  // Extract text from the response - handle both standard and tool-augmented responses
-  const choice = data.choices?.[0];
-  if (!choice) return "";
 
-  // Standard message response
-  if (choice.message?.content) {
-    return choice.message.content;
-  }
-
-  // If output_text is present (responses API format)
+  // Responses API returns output_text for the final text
   if (data.output_text) {
     return data.output_text;
+  }
+
+  // Fallback: extract from output array
+  if (data.output) {
+    for (const item of data.output) {
+      if (item.type === "message" && item.content) {
+        for (const block of item.content) {
+          if (block.type === "output_text" && block.text) {
+            return block.text;
+          }
+        }
+      }
+    }
   }
 
   return "";

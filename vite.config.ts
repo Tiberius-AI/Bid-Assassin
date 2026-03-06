@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
         "/api/openai-dev": {
           target: "https://api.openai.com",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/openai-dev/, "/v1/chat/completions"),
+          rewrite: (path) => path.replace(/^\/api\/openai-dev/, "/v1/responses"),
           headers: {
             Authorization: `Bearer ${env.VITE_OPENAI_API_KEY || ""}`,
           },
