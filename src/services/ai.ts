@@ -1,11 +1,97 @@
 import type { Company, AISuggestions, ChatMessage } from "@/types";
 
-// In dev: Vite proxy handles /api/anthropic -> Anthropic API
-// In prod: Vercel serverless function at /api/anthropic
+// ============================================================
+// API Proxy Endpoints
+// ============================================================
 const ANTHROPIC_PROXY = import.meta.env.DEV
   ? "/api/anthropic/v1/messages"
   : "/api/anthropic";
 
+const OPENAI_PROXY = import.meta.env.DEV
+  ? "/api/openai-dev"
+  : "/api/openai";
+
+// ============================================================
+// Shared: Retry with exponential backoff for rate limits
+// ============================================================
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  retries = 3
+): Promise<Response> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status === 429 && attempt < retries - 1) {
+      const waitSec = 15 * Math.pow(2, attempt);
+      console.warn(`Rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${retries})`);
+      await new Promise((r) => setTimeout(r, waitSec * 1000));
+      continue;
+    }
+    return res;
+  }
+  return fetch(url, init);
+}
+
+// ============================================================
+// OpenAI: GPT-4o for intake, research, and web search
+// ============================================================
+interface OpenAIMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+async function callOpenAI(
+  messages: OpenAIMessage[],
+  options?: { tools?: unknown[]; web_search?: boolean; max_tokens?: number }
+): Promise<string> {
+  // Build request body
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: Record<string, any> = {
+    model: "gpt-4o",
+    messages,
+    max_tokens: options?.max_tokens || 4096,
+  };
+
+  // OpenAI web search via tools
+  if (options?.web_search) {
+    body.tools = [{ type: "web_search_preview" }];
+  }
+  if (options?.tools) {
+    body.tools = [...(body.tools || []), ...options.tools];
+  }
+
+  const res = await fetchWithRetry(OPENAI_PROXY, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`OpenAI API error: ${res.status} - ${errorText}`);
+  }
+
+  const data = await res.json();
+  // Extract text from the response - handle both standard and tool-augmented responses
+  const choice = data.choices?.[0];
+  if (!choice) return "";
+
+  // Standard message response
+  if (choice.message?.content) {
+    return choice.message.content;
+  }
+
+  // If output_text is present (responses API format)
+  if (data.output_text) {
+    return data.output_text;
+  }
+
+  return "";
+}
+
+// ============================================================
+// Claude: Opus 4.6 for high-quality proposal writing
+// ============================================================
 interface AnthropicMessage {
   role: "user" | "assistant";
   content: string | Array<{ type: string; [key: string]: unknown }>;
@@ -28,18 +114,19 @@ interface AnthropicResponse {
 async function callClaude(
   messages: AnthropicMessage[],
   systemPrompt: string,
-  options?: { tools?: unknown[]; max_tokens?: number }
+  options?: { max_tokens?: number }
 ): Promise<string> {
-  const res = await fetch(ANTHROPIC_PROXY, {
+  const body = JSON.stringify({
+    model: "claude-opus-4-20250514",
+    max_tokens: options?.max_tokens || 4096,
+    system: systemPrompt,
+    messages,
+  });
+
+  const res = await fetchWithRetry(ANTHROPIC_PROXY, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: options?.max_tokens || 4096,
-      system: systemPrompt,
-      messages,
-      ...(options?.tools ? { tools: options.tools } : {}),
-    }),
+    body,
   });
 
   if (!res.ok) {
@@ -47,75 +134,19 @@ async function callClaude(
     throw new Error(`Claude API error: ${res.status} - ${errorText}`);
   }
 
-  let data: AnthropicResponse = await res.json();
-
-  // If Claude wants to use a tool (web search), we need to continue the conversation
-  // by sending back the tool results. The server-side search tool is handled by Anthropic
-  // so we just need to handle the multi-turn response pattern.
-  let currentMessages = [...messages];
-  let iterations = 0;
-
-  while (data.stop_reason === "tool_use" && iterations < 5) {
-    iterations++;
-    console.log(`Tool use iteration ${iterations}, processing tool calls...`);
-
-    // Add the assistant's response (with tool_use blocks) to the conversation
-    currentMessages = [
-      ...currentMessages,
-      { role: "assistant" as const, content: data.content as Array<{ type: string; [key: string]: unknown }> },
-    ];
-
-    // Find tool_use blocks and create tool_result responses
-    const toolResults: Array<{ type: string; tool_use_id: string; content: string }> = [];
-    for (const block of data.content) {
-      if (block.type === "tool_use" && block.id) {
-        // For server-side tools like web_search, Anthropic handles execution,
-        // but if we get tool_use, we need to let the API know to continue
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: "Continue with the search results.",
-        });
-      }
-    }
-
-    if (toolResults.length === 0) break;
-
-    currentMessages = [
-      ...currentMessages,
-      { role: "user" as const, content: toolResults as Array<{ type: string; [key: string]: unknown }> },
-    ];
-
-    const continueRes = await fetch(ANTHROPIC_PROXY, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: options?.max_tokens || 4096,
-        system: systemPrompt,
-        messages: currentMessages,
-        ...(options?.tools ? { tools: options.tools } : {}),
-      }),
-    });
-
-    if (!continueRes.ok) {
-      const errorText = await continueRes.text();
-      throw new Error(`Claude API error: ${continueRes.status} - ${errorText}`);
-    }
-
-    data = await continueRes.json();
-  }
-
-  // Extract all text blocks from the final response
+  const data: AnthropicResponse = await res.json();
   const textBlocks = data.content.filter((b) => b.type === "text" && b.text);
   return textBlocks.map((b) => b.text).join("\n") || "";
 }
 
-function buildSystemPrompt(company: Company): string {
+// ============================================================
+// Company prompt builder (used by Claude for proposals)
+// ============================================================
+function buildProposalSystemPrompt(company: Company): string {
   const trades = company.trades?.length ? company.trades.join(", ") : "General contracting";
   const certs = company.certifications?.length ? company.certifications.join(", ") : "None listed";
 
-  return `You are a professional proposal generator for commercial subcontractors. You help create polished, detailed proposals.
+  return `You are a world-class proposal writer for commercial subcontractors. You write compelling, detailed, and winning proposals.
 
 Company Profile:
 - Name: ${company.name}
@@ -140,9 +171,16 @@ IMPORTANT: Always respond with valid JSON matching this exact structure:
   "suggestions": string[] (tips to improve the proposal)
 }
 
-Use realistic market pricing for the given trade and region. The tone should be ${company.proposal_tone}.`;
+Use realistic market pricing for the given trade and region. The tone should be ${company.proposal_tone}. Write with authority and confidence — this proposal needs to WIN the bid.`;
 }
 
+// ============================================================
+// EXPORTED FUNCTIONS
+// ============================================================
+
+/**
+ * Generate proposal — Claude Opus 4.6 (quality writing)
+ */
 export async function generateProposal(
   company: Company,
   scopeNotes: string,
@@ -154,7 +192,7 @@ export async function generateProposal(
     tradeType: string;
   }
 ): Promise<AISuggestions> {
-  const systemPrompt = buildSystemPrompt(company);
+  const systemPrompt = buildProposalSystemPrompt(company);
 
   const userMessage = `Generate a detailed proposal for the following job:
 
@@ -181,12 +219,19 @@ Generate realistic line items with market-appropriate pricing. Return ONLY the J
   }
 }
 
+/**
+ * Research client — OpenAI GPT-4o with web search
+ */
 export async function researchClient(
   clientName: string,
   clientCompany: string,
   location: string
 ): Promise<string> {
-  const systemPrompt = `You are a business research assistant. Research the given company and provide useful intelligence for tailoring a commercial subcontractor proposal to win their business.
+  const response = await callOpenAI(
+    [
+      {
+        role: "system",
+        content: `You are a business research assistant. Research the given company and provide useful intelligence for tailoring a commercial subcontractor proposal to win their business.
 
 Return your findings as a JSON object:
 {
@@ -195,32 +240,29 @@ Return your findings as a JSON object:
   "website_summary": string,
   "social_media": { "linkedin": string, "other": string } | null,
   "tailoring_insights": string[]
-}`;
-
-  const response = await callClaude(
-    [
+}`,
+      },
       {
         role: "user",
-        content: `Research this company for a proposal: ${clientCompany} (contact: ${clientName}), located in ${location}. Find their online presence, reviews, values, and any useful info for tailoring a bid.`,
+        content: `Research this company for a proposal: ${clientCompany} (contact: ${clientName}), located in ${location}. Find their online presence, reviews, values, recent projects, and any useful info for tailoring a winning bid. Search the web thoroughly.`,
       },
     ],
-    systemPrompt,
-    {
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      max_tokens: 4096,
-    }
+    { web_search: true, max_tokens: 4096 }
   );
 
   return response;
 }
 
+/**
+ * Agent review chat — Claude Opus 4.6 (proposal refinement)
+ */
 export async function agentChat(
   company: Company,
   conversationHistory: ChatMessage[],
   proposalContext: Record<string, unknown>,
   userMessage: string
 ): Promise<{ reply: string; proposalUpdates?: Partial<AISuggestions> }> {
-  const systemPrompt = `${buildSystemPrompt(company)}
+  const systemPrompt = `${buildProposalSystemPrompt(company)}
 
 You are also a proposal review assistant. The user is reviewing a generated proposal and may ask for changes.
 
@@ -266,6 +308,9 @@ Only include the fields that changed. If no proposal changes are needed (just an
   return { reply, proposalUpdates };
 }
 
+/**
+ * Intake chat — OpenAI GPT-4o with web search (research + conversation)
+ */
 export async function agentIntakeChat(
   company: Company,
   conversationHistory: ChatMessage[],
@@ -301,25 +346,23 @@ When you have enough information to generate a proposal, respond with the gather
 
 Only include <intake_complete> when you have at minimum: client company, project location, and type of work.`;
 
-  // Filter to only user/assistant messages, skip the initial greeting,
-  // and ensure conversation starts with a user message (API requirement)
-  const allMessages: AnthropicMessage[] = [
-    ...conversationHistory.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
-    { role: "user", content: userMessage },
+  // Build messages for OpenAI format
+  const openaiMessages: OpenAIMessage[] = [
+    { role: "system", content: systemPrompt },
   ];
 
-  // Ensure first message is from "user" — Claude API requires it
-  const messages: AnthropicMessage[] = [];
-  for (const msg of allMessages) {
-    if (messages.length === 0 && msg.role === "assistant") continue; // skip leading assistant messages
-    messages.push(msg);
+  // Add conversation history (skip leading assistant messages)
+  for (const m of conversationHistory) {
+    if (openaiMessages.length === 1 && m.role === "assistant") continue;
+    openaiMessages.push({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    });
   }
+  openaiMessages.push({ role: "user", content: userMessage });
 
-  const response = await callClaude(messages, systemPrompt, {
-    tools: [{ type: "web_search_20250305", name: "web_search" }],
+  const response = await callOpenAI(openaiMessages, {
+    web_search: true,
     max_tokens: 4096,
   });
 

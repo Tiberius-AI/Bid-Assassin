@@ -26,6 +26,14 @@ export default defineConfig(({ mode }) => {
             "anthropic-version": "2023-06-01",
           },
         },
+        "/api/openai-dev": {
+          target: "https://api.openai.com",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/openai-dev/, "/v1/chat/completions"),
+          headers: {
+            Authorization: `Bearer ${env.VITE_OPENAI_API_KEY || ""}`,
+          },
+        },
       },
     },
   };
