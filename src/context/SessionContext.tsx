@@ -127,15 +127,24 @@ export const SessionProvider = ({ children }: Props) => {
       }
     }, 8000);
 
-    // Validate session server-side with getUser() instead of trusting cached getSession()
     const initSession = async () => {
       try {
-        // getUser() hits the server and auto-refreshes the token if needed
+        // Step 1: Quick local check — no network call
+        const { data: { session: cachedSession } } = await supabase.auth.getSession();
+
+        if (!cachedSession) {
+          // No tokens at all — show login immediately
+          console.log("No cached session, showing login");
+          done();
+          return;
+        }
+
+        // Step 2: Tokens exist — validate them server-side
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error || !user) {
-          // Token is invalid/expired and can't be refreshed — clear stale state
-          console.log("No valid user session, clearing stale auth");
+          // Tokens were stale/expired and couldn't be refreshed
+          console.log("Stale session, clearing");
           await supabase.auth.signOut({ scope: "local" });
           setSession(null);
           setProfile(null);
@@ -144,7 +153,8 @@ export const SessionProvider = ({ children }: Props) => {
           return;
         }
 
-        // User is validated — now get the (refreshed) session
+        // Step 3: Session is valid — load user data
+        // Re-read session (may have been refreshed by getUser)
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
 
