@@ -119,7 +119,6 @@ export const SessionProvider = ({ children }: Props) => {
       }
     };
 
-    // Safety net timeout
     const timeout = setTimeout(() => {
       if (!resolved) {
         console.warn("Session load timed out");
@@ -127,58 +126,35 @@ export const SessionProvider = ({ children }: Props) => {
       }
     }, 8000);
 
-    const initSession = async () => {
-      try {
-        // Step 1: Quick local check — no network call
-        const { data: { session: cachedSession } } = await supabase.auth.getSession();
-
-        if (!cachedSession) {
-          // No tokens at all — show login immediately
-          console.log("No cached session, showing login");
-          done();
-          return;
-        }
-
-        // Step 2: Tokens exist — validate them server-side
-        const { data: { user }, error } = await supabase.auth.getUser();
-
-        if (error || !user) {
-          // Tokens were stale/expired and couldn't be refreshed
-          console.log("Stale session, clearing");
-          await supabase.auth.signOut({ scope: "local" });
-          setSession(null);
-          setProfile(null);
-          setCompany(null);
-          done();
-          return;
-        }
-
-        // Step 3: Session is valid — load user data
-        // Re-read session (may have been refreshed by getUser)
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-
-        if (session?.user?.id) {
-          await fetchProfile(session.user.id);
-          await fetchCompany(session.user.id);
-        }
-      } catch (err) {
-        console.error("Session init failed:", err);
-        await supabase.auth.signOut({ scope: "local" });
-        setSession(null);
-        setProfile(null);
-        setCompany(null);
-      }
-      done();
-    };
-
-    initSession();
-
-    // Listen for auth changes (login, logout, token refresh)
+    // Single code path: onAuthStateChange handles everything
+    // - INITIAL_SESSION: fires immediately on registration with cached session
+    // - SIGNED_IN: fires after login
+    // - SIGNED_OUT: fires after logout
+    // - TOKEN_REFRESHED: fires after token refresh
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        console.log("Auth state change:", _event, session ? "has session" : "no session");
+      async (event, session) => {
+        console.log("Auth event:", event, session ? "has session" : "no session");
+
+        // On initial load with existing tokens, validate them server-side
+        if (event === "INITIAL_SESSION" && session) {
+          const { error } = await supabase.auth.getUser();
+          if (error) {
+            console.log("Stale session detected, clearing");
+            setSession(null);
+            setProfile(null);
+            setCompany(null);
+            // Fire-and-forget: clear stale tokens from localStorage
+            // (triggers SIGNED_OUT event, but we've already set state to null)
+            supabase.auth.signOut({ scope: "local" });
+            done();
+            return;
+          }
+        }
+
+        // Set session state
         setSession(session);
+
+        // Load user data if we have a session
         if (session?.user?.id) {
           try {
             await fetchProfile(session.user.id);
@@ -190,6 +166,7 @@ export const SessionProvider = ({ children }: Props) => {
           setProfile(null);
           setCompany(null);
         }
+
         done();
       }
     );
