@@ -52,12 +52,12 @@ export const SessionProvider = ({ children }: Props) => {
       console.error("fetchProfile error:", error.message, error.details, error.code);
     }
 
-    // Only create a fallback profile if we got a "no rows" error (PGRST116),
-    // NOT if we got some other error like RLS violation
+    // Only create a fallback profile if we got a "no rows" error (PGRST116)
     if (!data && error?.code === "PGRST116") {
       console.warn("No profile found — creating fallback profile for", userId);
-      const { data: sessionData } = await supabase.auth.getUser();
-      const user = sessionData?.user;
+      // Use session data instead of getUser() to avoid potential deadlock
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const user = currentSession?.user;
       const { data: newProfile, error: insertError } = await supabase
         .from("profiles")
         .insert({
@@ -110,72 +110,70 @@ export const SessionProvider = ({ children }: Props) => {
     await supabase.auth.signOut();
   }, []);
 
+  // Effect 1: Listen for auth changes — ONLY set session, never await Supabase calls
   useEffect(() => {
-    let resolved = false;
-    const done = () => {
-      if (!resolved) {
-        resolved = true;
+    let mounted = true;
+
+    // Read cached session from localStorage (no network call)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
         setIsLoading(false);
       }
-    };
+    });
 
-    const timeout = setTimeout(() => {
-      if (!resolved) {
-        console.warn("Session load timed out");
-        done();
-      }
-    }, 8000);
-
-    // Single code path: onAuthStateChange handles everything
-    // - INITIAL_SESSION: fires immediately on registration with cached session
-    // - SIGNED_IN: fires after login
-    // - SIGNED_OUT: fires after logout
-    // - TOKEN_REFRESHED: fires after token refresh
+    // Listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth event:", event, session ? "has session" : "no session");
-
-        // On initial load with existing tokens, validate them server-side
-        if (event === "INITIAL_SESSION" && session) {
-          const { error } = await supabase.auth.getUser();
-          if (error) {
-            console.log("Stale session detected, clearing");
-            setSession(null);
-            setProfile(null);
-            setCompany(null);
-            // Fire-and-forget: clear stale tokens from localStorage
-            // (triggers SIGNED_OUT event, but we've already set state to null)
-            supabase.auth.signOut({ scope: "local" });
-            done();
-            return;
-          }
+      (_event, session) => {
+        console.log("Auth event:", _event, session ? "has session" : "no session");
+        if (mounted) {
+          setSession(session);
+          setIsLoading(false);
         }
-
-        // Set session state
-        setSession(session);
-
-        // Load user data if we have a session
-        if (session?.user?.id) {
-          try {
-            await fetchProfile(session.user.id);
-            await fetchCompany(session.user.id);
-          } catch (err) {
-            console.error("Error loading user data:", err);
-          }
-        } else {
-          setProfile(null);
-          setCompany(null);
-        }
-
-        done();
       }
     );
 
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (mounted) setIsLoading(false);
+    }, 5000);
+
     return () => {
+      mounted = false;
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, [fetchProfile, fetchCompany]);
+  }, []);
+
+  // Effect 2: Load profile and company whenever session changes
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setProfile(null);
+      setCompany(null);
+      return;
+    }
+
+    const userId = session.user.id;
+    let cancelled = false;
+
+    const loadUserData = async () => {
+      try {
+        const [profileData, companyData] = await Promise.all([
+          fetchProfile(userId),
+          fetchCompany(userId),
+        ]);
+        if (cancelled) return;
+        // fetchProfile/fetchCompany already call setProfile/setCompany internally
+        console.log("User data loaded:", profileData ? "profile ok" : "no profile", companyData ? "company ok" : "no company");
+      } catch (err) {
+        console.error("Error loading user data:", err);
+      }
+    };
+
+    loadUserData();
+
+    return () => { cancelled = true; };
+  }, [session?.user?.id, fetchProfile, fetchCompany]);
 
   return (
     <SessionContext.Provider
