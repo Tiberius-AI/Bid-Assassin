@@ -146,7 +146,13 @@ export default function ProposalReview({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave();
+      // 30s timeout so the button can't spin forever
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Save timed out")), 30000)
+      );
+      await Promise.race([onSave(), timeout]);
+    } catch (err) {
+      console.error("Save error in ProposalReview:", err);
     } finally {
       setSaving(false);
     }

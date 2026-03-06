@@ -60,7 +60,8 @@ export default function ProposalBuilder() {
         toast.success("Proposal created!");
         navigate(`/proposals/${newProposal.id}`);
       }
-    } catch {
+    } catch (err) {
+      console.error("Proposal save failed:", err);
       toast.error("Failed to save proposal. Please try again.");
     }
   };

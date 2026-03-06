@@ -119,37 +119,53 @@ export const SessionProvider = ({ children }: Props) => {
       }
     };
 
-    // Safety net: if getSession hangs (stale tokens), clear storage and proceed
-    const timeout = setTimeout(async () => {
+    // Safety net timeout
+    const timeout = setTimeout(() => {
       if (!resolved) {
-        console.warn("Session load timed out — clearing stale auth and retrying");
-        // Clear any corrupted/stale auth tokens
-        await supabase.auth.signOut({ scope: "local" });
+        console.warn("Session load timed out");
         done();
       }
-    }, 5000);
+    }, 8000);
 
-    // Initial session check
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("getSession resolved:", session ? "has session" : "no session");
-      setSession(session);
-      if (session?.user?.id) {
-        try {
+    // Validate session server-side with getUser() instead of trusting cached getSession()
+    const initSession = async () => {
+      try {
+        // getUser() hits the server and auto-refreshes the token if needed
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error || !user) {
+          // Token is invalid/expired and can't be refreshed — clear stale state
+          console.log("No valid user session, clearing stale auth");
+          await supabase.auth.signOut({ scope: "local" });
+          setSession(null);
+          setProfile(null);
+          setCompany(null);
+          done();
+          return;
+        }
+
+        // User is validated — now get the (refreshed) session
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+
+        if (session?.user?.id) {
           await fetchProfile(session.user.id);
           await fetchCompany(session.user.id);
-        } catch (err) {
-          console.error("Error loading user data:", err);
         }
+      } catch (err) {
+        console.error("Session init failed:", err);
+        await supabase.auth.signOut({ scope: "local" });
+        setSession(null);
+        setProfile(null);
+        setCompany(null);
       }
       done();
-    }).catch(async (err) => {
-      console.error("getSession failed:", err);
-      // Clear corrupted auth state on failure
-      await supabase.auth.signOut({ scope: "local" });
-      done();
-    });
+    };
 
-    const authStateListener = supabase.auth.onAuthStateChange(
+    initSession();
+
+    // Listen for auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         console.log("Auth state change:", _event, session ? "has session" : "no session");
         setSession(session);
@@ -170,7 +186,7 @@ export const SessionProvider = ({ children }: Props) => {
 
     return () => {
       clearTimeout(timeout);
-      authStateListener.data.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [fetchProfile, fetchCompany]);
 
