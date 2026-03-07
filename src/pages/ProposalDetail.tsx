@@ -253,6 +253,11 @@ export default function ProposalDetail() {
                     Sent {new Date(proposal.sent_at).toLocaleDateString()}
                   </p>
                 )}
+                {proposal.expires_at && (
+                  <p className={`text-xs mt-0.5 ${new Date(proposal.expires_at) < new Date() ? "text-red-500 font-medium" : "text-gray-400"}`}>
+                    Valid until {new Date(proposal.expires_at).toLocaleDateString()}
+                  </p>
+                )}
               </div>
             </div>
             <span
@@ -367,7 +372,7 @@ export default function ProposalDetail() {
         </div>
 
         {/* Terms */}
-        <div className="p-6 grid grid-cols-3 gap-6">
+        <div className="border-b border-gray-200 p-6 grid grid-cols-3 gap-6">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-1">Timeline</h3>
             <p className="text-sm text-gray-700">
@@ -385,6 +390,61 @@ export default function ProposalDetail() {
             <p className="text-sm text-gray-700">
               {proposal.warranty_terms || "Not specified"}
             </p>
+          </div>
+        </div>
+
+        {/* Signature / Acceptance Block */}
+        <div className="p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">
+            Authorization &amp; Acceptance
+          </h3>
+          <p className="text-xs text-gray-500 mb-5">
+            By signing below, both parties agree to the terms and scope outlined in this proposal.
+            {proposal.expires_at && (
+              <> This proposal is valid until <span className="font-medium">{new Date(proposal.expires_at).toLocaleDateString()}</span>.</>
+            )}
+          </p>
+          <div className="grid grid-cols-2 gap-10">
+            {/* Client */}
+            <div className="space-y-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Client / Authorized Representative</p>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Printed Name</p>
+              </div>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Title</p>
+              </div>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Signature</p>
+              </div>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Date</p>
+              </div>
+            </div>
+            {/* Contractor */}
+            <div className="space-y-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contractor ({company?.name})</p>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Printed Name</p>
+              </div>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Title</p>
+              </div>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Signature</p>
+              </div>
+              <div>
+                <div className="border-b border-gray-400 h-8 mb-1" />
+                <p className="text-xs text-gray-400">Date</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

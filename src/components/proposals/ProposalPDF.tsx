@@ -144,6 +144,46 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#9CA3AF",
   },
+  signatureSection: {
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  signatureGrid: {
+    flexDirection: "row",
+    gap: 40,
+    marginTop: 12,
+  },
+  signatureColumn: {
+    flex: 1,
+  },
+  signatureColumnLabel: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#6B7280",
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  signatureField: {
+    marginBottom: 14,
+  },
+  signatureLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#9CA3AF",
+    height: 20,
+    marginBottom: 3,
+  },
+  signatureFieldLabel: {
+    fontSize: 7,
+    color: "#9CA3AF",
+  },
+  signatureNote: {
+    fontSize: 8,
+    color: "#6B7280",
+    marginTop: 4,
+    marginBottom: 12,
+    lineHeight: 1.4,
+  },
 });
 
 interface ProposalPDFProps {
@@ -185,6 +225,11 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
             <Text style={styles.proposalNumber}>
               Date: {new Date(proposal.created_at).toLocaleDateString()}
             </Text>
+            {proposal.expires_at && (
+              <Text style={styles.proposalNumber}>
+                Valid Until: {new Date(proposal.expires_at).toLocaleDateString()}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -314,6 +359,43 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
             </Text>
           </View>
         )}
+
+        {/* Signature / Acceptance Block */}
+        <View style={styles.signatureSection}>
+          <Text style={styles.sectionTitle}>Authorization &amp; Acceptance</Text>
+          <Text style={styles.signatureNote}>
+            By signing below, both parties agree to the scope, pricing, and terms outlined in this proposal.
+            {proposal.expires_at
+              ? ` This proposal is valid until ${new Date(proposal.expires_at).toLocaleDateString()}.`
+              : ""}
+          </Text>
+          <View style={styles.signatureGrid}>
+            {/* Client column */}
+            <View style={styles.signatureColumn}>
+              <Text style={styles.signatureColumnLabel}>
+                Client / Authorized Representative
+              </Text>
+              {(["Printed Name", "Title", "Signature", "Date"] as const).map((label) => (
+                <View key={label} style={styles.signatureField}>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureFieldLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+            {/* Contractor column */}
+            <View style={styles.signatureColumn}>
+              <Text style={styles.signatureColumnLabel}>
+                Contractor — {company.name}
+              </Text>
+              {(["Printed Name", "Title", "Signature", "Date"] as const).map((label) => (
+                <View key={label} style={styles.signatureField}>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureFieldLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
 
         {/* Footer */}
         <View style={styles.footer} fixed>

@@ -43,6 +43,7 @@ export default function ProposalEdit() {
   const [timeline, setTimeline] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [warrantyTerms, setWarrantyTerms] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
   // Line items
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -62,6 +63,13 @@ export default function ProposalEdit() {
     setPaymentTerms(proposal.payment_terms || "");
     setWarrantyTerms(proposal.warranty_terms || "");
     setLineItems(ai?.line_items?.length ? [...ai.line_items] : [newLineItem()]);
+
+    // Default expiry: existing value or 30 days from creation
+    const defaultExpiry = proposal.expires_at
+      ? new Date(proposal.expires_at)
+      : new Date(new Date(proposal.created_at).getTime() + 30 * 24 * 60 * 60 * 1000);
+    setExpiresAt(defaultExpiry.toISOString().slice(0, 10)); // YYYY-MM-DD for <input type="date">
+
     setInitialised(true);
   }
 
@@ -109,6 +117,7 @@ export default function ProposalEdit() {
         timeline_description: timeline,
         payment_terms: paymentTerms,
         warranty_terms: warrantyTerms,
+        expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
         total_amount: total,
         ai_suggestions: {
           ...existingAI,
@@ -335,6 +344,15 @@ export default function ProposalEdit() {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Terms & Timeline</h2>
           <div className="space-y-4">
+            <div>
+              <Label>Proposal Valid Until</Label>
+              <Input
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                className="w-48"
+              />
+            </div>
             <div>
               <Label>Timeline</Label>
               <Input value={timeline} onChange={(e) => setTimeline(e.target.value)} />
