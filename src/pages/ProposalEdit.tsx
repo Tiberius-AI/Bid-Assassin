@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import supabase from "@/supabase";
 import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
@@ -13,6 +14,9 @@ import {
   Plus,
   Trash2,
   AlertCircle,
+  Upload,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import type { LineItem, AISuggestions } from "@/types";
 
@@ -25,7 +29,6 @@ export default function ProposalEdit() {
   const navigate = useNavigate();
   const { proposal, loading, error, updateProposal } = useProposal(id);
 
-  // We initialise state once the proposal loads via a separate flag
   const [initialised, setInitialised] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +48,15 @@ export default function ProposalEdit() {
   const [warrantyTerms, setWarrantyTerms] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
 
+  // Media
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
+  const [clientLogoUploading, setClientLogoUploading] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [photosUploading, setPhotosUploading] = useState(false);
+
+  const clientLogoRef = useRef<HTMLInputElement>(null);
+  const photosRef = useRef<HTMLInputElement>(null);
+
   // Line items
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
 
@@ -63,17 +75,80 @@ export default function ProposalEdit() {
     setPaymentTerms(proposal.payment_terms || "");
     setWarrantyTerms(proposal.warranty_terms || "");
     setLineItems(ai?.line_items?.length ? [...ai.line_items] : [newLineItem()]);
+    setClientLogoUrl(proposal.client_logo_url || null);
+    setPhotos(proposal.project_photos || []);
 
-    // Default expiry: existing value or 30 days from creation
     const defaultExpiry = proposal.expires_at
       ? new Date(proposal.expires_at)
       : new Date(new Date(proposal.created_at).getTime() + 30 * 24 * 60 * 60 * 1000);
-    setExpiresAt(defaultExpiry.toISOString().slice(0, 10)); // YYYY-MM-DD for <input type="date">
+    setExpiresAt(defaultExpiry.toISOString().slice(0, 10));
 
     setInitialised(true);
   }
 
-  // Line item helpers
+  // --- Client logo upload ---
+  const handleClientLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !proposal) return;
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      toast.error("Only PNG and JPG files are allowed");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB");
+      return;
+    }
+    setClientLogoUploading(true);
+    try {
+      const ext = file.type === "image/png" ? "png" : "jpg";
+      const path = `${proposal.id}/client-logo.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("proposal-assets")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("proposal-assets").getPublicUrl(path);
+      setClientLogoUrl(`${data.publicUrl}?t=${Date.now()}`);
+    } catch {
+      toast.error("Failed to upload client logo");
+    } finally {
+      setClientLogoUploading(false);
+      if (clientLogoRef.current) clientLogoRef.current.value = "";
+    }
+  };
+
+  // --- Project photos upload ---
+  const handlePhotosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !proposal) return;
+
+    const validFiles = files.filter((f) => ["image/png", "image/jpeg"].includes(f.type));
+    if (validFiles.length !== files.length) toast.error("Only PNG/JPG files are accepted");
+    if (!validFiles.length) return;
+
+    setPhotosUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of validFiles) {
+        const ext = file.type === "image/png" ? "png" : "jpg";
+        const path = `${proposal.id}/photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("proposal-assets")
+          .upload(path, file, { contentType: file.type });
+        if (upErr) { toast.error(`Failed to upload ${file.name}`); continue; }
+        const { data } = supabase.storage.from("proposal-assets").getPublicUrl(path);
+        uploaded.push(data.publicUrl);
+      }
+      setPhotos((prev) => [...prev, ...uploaded]);
+      if (uploaded.length) toast.success(`${uploaded.length} photo${uploaded.length > 1 ? "s" : ""} uploaded`);
+    } finally {
+      setPhotosUploading(false);
+      if (photosRef.current) photosRef.current.value = "";
+    }
+  };
+
+  const removePhoto = (url: string) => setPhotos((prev) => prev.filter((p) => p !== url));
+
+  // --- Line item helpers ---
   const updateLineItem = (index: number, field: keyof LineItem, raw: string | number) => {
     setLineItems((prev) => {
       const next = [...prev];
@@ -84,7 +159,8 @@ export default function ProposalEdit() {
         const num = parseFloat(String(raw)) || 0;
         (item as Record<string, unknown>)[field] = num;
         if (field === "quantity" || field === "unit_price") {
-          item.total_price = (field === "quantity" ? num : item.quantity) *
+          item.total_price =
+            (field === "quantity" ? num : item.quantity) *
             (field === "unit_price" ? num : item.unit_price);
         }
       }
@@ -94,12 +170,10 @@ export default function ProposalEdit() {
   };
 
   const addLineItem = () => setLineItems((prev) => [...prev, newLineItem()]);
-
-  const removeLineItem = (index: number) =>
-    setLineItems((prev) => prev.filter((_, i) => i !== index));
-
+  const removeLineItem = (index: number) => setLineItems((prev) => prev.filter((_, i) => i !== index));
   const total = lineItems.reduce((sum, item) => sum + (item.total_price || 0), 0);
 
+  // --- Save ---
   const handleSave = async () => {
     if (!proposal) return;
     setSaving(true);
@@ -118,11 +192,10 @@ export default function ProposalEdit() {
         payment_terms: paymentTerms,
         warranty_terms: warrantyTerms,
         expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+        client_logo_url: clientLogoUrl,
+        project_photos: photos,
         total_amount: total,
-        ai_suggestions: {
-          ...existingAI,
-          line_items: lineItems,
-        },
+        ai_suggestions: { ...existingAI, line_items: lineItems },
       });
       toast.success("Proposal saved");
       navigate(`/proposals/${proposal.id}`);
@@ -133,6 +206,7 @@ export default function ProposalEdit() {
     }
   };
 
+  // --- Loading / error states ---
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -140,7 +214,6 @@ export default function ProposalEdit() {
       </div>
     );
   }
-
   if (error || !proposal) {
     return (
       <div className="p-6 text-center">
@@ -166,11 +239,7 @@ export default function ProposalEdit() {
         </Button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">{proposal.proposal_number}</span>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-2 bg-red-600 hover:bg-red-700"
-          >
+          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-red-600 hover:bg-red-700">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Changes"}
           </Button>
@@ -203,6 +272,54 @@ export default function ProposalEdit() {
               <Input value={projectAddress} onChange={(e) => setProjectAddress(e.target.value)} />
             </div>
           </div>
+
+          {/* Client Logo */}
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <Label className="mb-2 block">Client Logo <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <div className="flex items-center gap-4">
+              {clientLogoUrl ? (
+                <div className="relative">
+                  <img
+                    src={clientLogoUrl}
+                    alt="Client logo"
+                    className="h-14 w-auto max-w-[140px] object-contain rounded border border-gray-200 bg-gray-50 p-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setClientLogoUrl(null)}
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="h-14 w-28 rounded border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 text-gray-400 text-xs">
+                  No logo
+                </div>
+              )}
+              <div>
+                <input
+                  ref={clientLogoRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={handleClientLogoUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={clientLogoUploading}
+                  onClick={() => clientLogoRef.current?.click()}
+                  className="gap-2"
+                >
+                  {clientLogoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {clientLogoUploading ? "Uploading..." : "Upload Logo"}
+                </Button>
+                <p className="text-xs text-gray-400 mt-1">PNG or JPG, max 2MB</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Scope of Work */}
@@ -219,7 +336,6 @@ export default function ProposalEdit() {
         {/* Line Items */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Pricing</h2>
-
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -290,9 +406,7 @@ export default function ProposalEdit() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4} className="pt-3 text-right font-semibold text-gray-900 pr-2">
-                    Total
-                  </td>
+                  <td colSpan={4} className="pt-3 text-right font-semibold text-gray-900 pr-2">Total</td>
                   <td className="pt-3 text-right font-bold text-lg text-gray-900 px-2">
                     ${total.toLocaleString()}
                   </td>
@@ -301,14 +415,7 @@ export default function ProposalEdit() {
               </tfoot>
             </table>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addLineItem}
-            className="mt-4 gap-2"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="mt-4 gap-2">
             <Plus className="h-4 w-4" /> Add Line Item
           </Button>
         </div>
@@ -337,6 +444,56 @@ export default function ProposalEdit() {
                 className="resize-y mt-1"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Project Photos */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Project Photos</h2>
+          <p className="text-sm text-gray-500 mb-4">Before/after shots, reference work, or site photos. These will appear in the proposal and PDF.</p>
+
+          {photos.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+              {photos.map((url) => (
+                <div key={url} className="relative group aspect-square">
+                  <img
+                    src={url}
+                    alt="Project photo"
+                    className="w-full h-full object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(url)}
+                    className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <input
+              ref={photosRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              multiple
+              className="hidden"
+              onChange={handlePhotosUpload}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={photosUploading}
+              onClick={() => photosRef.current?.click()}
+              className="gap-2"
+            >
+              {photosUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+              {photosUploading ? "Uploading..." : "Add Photos"}
+            </Button>
+            <span className="text-xs text-gray-400 ml-3">PNG or JPG, multiple files allowed</span>
           </div>
         </div>
 
@@ -375,11 +532,7 @@ export default function ProposalEdit() {
 
         {/* Bottom save */}
         <div className="flex justify-end pb-4">
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-2 bg-red-600 hover:bg-red-700"
-          >
+          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-red-600 hover:bg-red-700">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Changes"}
           </Button>

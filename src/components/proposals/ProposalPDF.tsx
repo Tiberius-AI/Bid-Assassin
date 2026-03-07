@@ -184,6 +184,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 1.4,
   },
+  clientLogo: {
+    maxHeight: 36,
+    maxWidth: 90,
+    objectFit: "contain" as const,
+    marginBottom: 4,
+  },
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap" as const,
+    gap: 6,
+    marginTop: 8,
+  },
+  photoItem: {
+    width: "47%",
+    height: 140,
+    objectFit: "cover" as const,
+    borderRadius: 4,
+  },
 });
 
 interface ProposalPDFProps {
@@ -237,6 +255,9 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
         <View style={styles.infoGrid}>
           <View style={styles.infoBlock}>
             <Text style={styles.infoLabel}>Prepared For</Text>
+            {proposal.client_logo_url && (
+              <Image src={proposal.client_logo_url} style={styles.clientLogo} />
+            )}
             <Text style={styles.infoValue}>{proposal.client_name}</Text>
             <Text style={styles.infoValue}>{proposal.client_company}</Text>
             {proposal.client_email && (
@@ -357,6 +378,18 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
             <Text style={styles.bodyText}>
               {company.certifications.join(" | ")}
             </Text>
+          </View>
+        )}
+
+        {/* Project Photos */}
+        {(proposal.project_photos || []).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Project Photos</Text>
+            <View style={styles.photoGrid}>
+              {(proposal.project_photos || []).map((url, i) => (
+                <Image key={i} src={url} style={styles.photoItem} />
+              ))}
+            </View>
           </View>
         )}
 

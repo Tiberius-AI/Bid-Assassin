@@ -96,6 +96,8 @@ export interface Proposal {
   viewed_at: string | null;
   accepted_at: string | null;
   expires_at: string | null;
+  client_logo_url: string | null;
+  project_photos: string[];
   created_at: string;
   updated_at: string;
 }

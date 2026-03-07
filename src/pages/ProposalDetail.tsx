@@ -273,6 +273,13 @@ export default function ProposalDetail() {
         <div className="border-b border-gray-200 p-6 grid grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase mb-1">Client</p>
+            {proposal.client_logo_url && (
+              <img
+                src={proposal.client_logo_url}
+                alt="Client logo"
+                className="h-10 w-auto max-w-[100px] object-contain mb-2"
+              />
+            )}
             <p className="text-sm font-medium text-gray-900">{proposal.client_name}</p>
             <p className="text-sm text-gray-600">{proposal.client_company}</p>
             {proposal.client_email && (
@@ -392,6 +399,20 @@ export default function ProposalDetail() {
             </p>
           </div>
         </div>
+
+        {/* Project Photos */}
+        {(proposal.project_photos || []).length > 0 && (
+          <div className="border-b border-gray-200 p-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Project Photos</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {(proposal.project_photos || []).map((url, i) => (
+                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-gray-200">
+                  <img src={url} alt={`Project photo ${i + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Signature / Acceptance Block */}
         <div className="p-6">
