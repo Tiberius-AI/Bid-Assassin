@@ -3,6 +3,7 @@ import { useSession } from "@/context/SessionContext";
 import { useProposals } from "@/hooks/useProposals";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import supabase from "@/supabase";
 import ManualBuild from "@/components/proposals/ManualBuild";
 import AgentBuild from "@/components/proposals/AgentBuild";
 import { PenLine, Bot } from "lucide-react";
@@ -57,6 +58,43 @@ export default function ProposalBuilder() {
         navigate(`/proposals/${id}`);
       } else {
         const newProposal = await createProposal(proposalData);
+
+        // Auto-create Client record if none exists for this company/contact
+        const clientKey = data.clientCompany?.trim() || data.clientName?.trim();
+        if (clientKey && company) {
+          const matchField = data.clientCompany?.trim() ? "company_name" : "name";
+          const { data: existing } = await supabase
+            .from("clients")
+            .select("id")
+            .eq("company_id", company.id)
+            .eq(matchField, clientKey)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from("clients").insert({
+              company_id: company.id,
+              name: data.clientName || data.clientCompany,
+              company_name: data.clientCompany || null,
+              email: data.clientEmail || null,
+              type: "gc",
+              relationship_status: "warm",
+            });
+          }
+        }
+
+        // Auto-create Project record linked to this proposal
+        if (company) {
+          await supabase.from("projects").insert({
+            company_id: company.id,
+            proposal_id: newProposal.id,
+            name: data.projectName || `${data.clientCompany || data.clientName} Bid`,
+            client_name: data.clientName || null,
+            client_company: data.clientCompany || null,
+            estimated_value: data.aiSuggestions.total_amount || 0,
+            status: "reviewing",
+          });
+        }
+
         toast.success("Proposal created!");
         navigate(`/proposals/${newProposal.id}`);
       }

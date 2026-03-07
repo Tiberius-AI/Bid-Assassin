@@ -109,6 +109,7 @@ export interface Proposal {
 export interface Project {
   id: string;
   company_id: string;
+  proposal_id: string | null;
   name: string;
   client_name: string | null;
   client_company: string | null;

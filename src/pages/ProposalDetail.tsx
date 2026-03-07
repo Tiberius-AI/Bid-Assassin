@@ -108,6 +108,21 @@ export default function ProposalDetail() {
       const updates: Partial<Proposal> = { status: next };
       if (next === "sent") updates.sent_at = new Date().toISOString();
       await updateProposal(updates);
+
+      // Sync linked project status
+      const projectStatusMap: Partial<Record<StatusKey, string>> = {
+        sent: "bid_submitted",
+        accepted: "won",
+        rejected: "lost",
+      };
+      const projectStatus = projectStatusMap[next];
+      if (projectStatus && proposal) {
+        await supabase
+          .from("projects")
+          .update({ status: projectStatus })
+          .eq("proposal_id", proposal.id);
+      }
+
       toast.success(`Proposal marked as ${STATUS_LABEL[next]}`);
     } catch {
       toast.error("Failed to update status");
