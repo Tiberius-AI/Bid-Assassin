@@ -313,6 +313,35 @@ Only include the fields that changed. If no proposal changes are needed (just an
 }
 
 /**
+ * Fetch and extract text content from a URL via OpenAI web search
+ */
+export async function fetchContentFromUrl(
+  url: string,
+  contentType: "about" | "terms"
+): Promise<string> {
+  const description =
+    contentType === "about"
+      ? "About Us, Company History, or Services section"
+      : "Terms and Conditions or Legal Terms section";
+
+  const response = await callOpenAI(
+    [
+      {
+        role: "system",
+        content: `You are a web content extractor. Visit the provided URL and extract only the ${description} text. Return it as clean plain text paragraphs — no markdown, no HTML tags, no navigation elements. Just the relevant body text, well formatted.`,
+      },
+      {
+        role: "user",
+        content: `Please visit this URL and extract the ${description}: ${url}`,
+      },
+    ],
+    { web_search: true, max_tokens: 2048 }
+  );
+
+  return response.trim();
+}
+
+/**
  * Intake chat — OpenAI GPT-4o with web search (research + conversation)
  */
 export async function agentIntakeChat(

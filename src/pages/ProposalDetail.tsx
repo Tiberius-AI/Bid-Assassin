@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { useProposal } from "@/hooks/useProposals";
+import supabase from "@/supabase";
 import { pdf } from "@react-pdf/renderer";
 import ProposalPDF from "@/components/proposals/ProposalPDF";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   Eye,
   XCircle,
   ChevronDown,
+  BookmarkPlus,
 } from "lucide-react";
 import type { AISuggestions, Proposal } from "@/types";
 
@@ -69,10 +71,11 @@ const isEditable = (status: StatusKey) => status === "draft";
 export default function ProposalDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { company } = useSession();
+  const { company, refreshCompany } = useSession();
   const { proposal, loading, error, updateProposal } = useProposal(id);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showTransitions, setShowTransitions] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const handleDownloadPDF = async () => {
     if (!proposal || !company) return;
@@ -110,6 +113,31 @@ export default function ProposalDetail() {
       toast.error("Failed to update status");
     } finally {
       setStatusUpdating(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!proposal || !company) return;
+    setSavingTemplate(true);
+    try {
+      const updates: Record<string, string | null> = {};
+      if (proposal.about_us) updates.company_bio = proposal.about_us;
+      if (proposal.terms_and_conditions) updates.default_terms = proposal.terms_and_conditions;
+      if (proposal.payment_terms) updates.default_payment_terms = proposal.payment_terms;
+      if (proposal.warranty_terms) updates.default_warranty_terms = proposal.warranty_terms;
+
+      const { error } = await supabase
+        .from("companies")
+        .update(updates)
+        .eq("id", company.id);
+      if (error) throw error;
+
+      await refreshCompany();
+      toast.success("Template saved! Future proposals will use these defaults.");
+    } catch {
+      toast.error("Failed to save template");
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -218,6 +246,21 @@ export default function ProposalDetail() {
               </Button>
             </Link>
           )}
+
+          <Button
+            variant="outline"
+            onClick={handleSaveTemplate}
+            disabled={savingTemplate}
+            className="gap-1"
+            title="Save About Us, Terms, and payment/warranty defaults back to your company profile"
+          >
+            {savingTemplate ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <BookmarkPlus className="h-4 w-4" />
+            )}
+            Save as Template
+          </Button>
 
           <Button
             onClick={handleDownloadPDF}
