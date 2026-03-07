@@ -16,20 +16,19 @@ export default function Dashboard() {
   const { proposals, loading } = useProposals(company?.id);
 
   const activeProposals = proposals.filter(
-    (p) => p.status === "draft" || p.status === "sent"
+    (p) => p.status === "draft" || p.status === "sent" || p.status === "viewed"
   );
   const wonProposals = proposals.filter((p) => p.status === "accepted");
+  const decidedProposals = proposals.filter(
+    (p) => p.status === "accepted" || p.status === "rejected"
+  );
   const totalPipeline = activeProposals.reduce(
     (sum, p) => sum + (p.total_amount || 0),
     0
   );
   const winRate =
-    proposals.length > 0
-      ? Math.round(
-          (wonProposals.length /
-            proposals.filter((p) => p.status !== "draft").length) *
-            100
-        ) || 0
+    decidedProposals.length > 0
+      ? Math.round((wonProposals.length / decidedProposals.length) * 100)
       : 0;
 
   return (
@@ -162,12 +161,16 @@ export default function Dashboard() {
                           ? "bg-green-100 text-green-700"
                           : proposal.status === "sent"
                           ? "bg-blue-100 text-blue-700"
+                          : proposal.status === "viewed"
+                          ? "bg-yellow-100 text-yellow-700"
                           : proposal.status === "rejected"
                           ? "bg-red-100 text-red-700"
                           : "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {proposal.status}
+                      {proposal.status === "rejected"
+                        ? "Declined"
+                        : proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
                     </span>
                   </div>
                 </Link>

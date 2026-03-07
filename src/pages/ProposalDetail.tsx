@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { useProposal } from "@/hooks/useProposals";
@@ -16,30 +17,62 @@ import {
   Clock,
   CheckCircle2,
   Send,
+  Eye,
+  XCircle,
+  ChevronDown,
 } from "lucide-react";
-import type { AISuggestions } from "@/types";
+import type { AISuggestions, Proposal } from "@/types";
+
+// --- Status config -----------------------------------------------------------
+
+type StatusKey = Proposal["status"];
+
+const STATUS_LABEL: Record<StatusKey, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  viewed: "Viewed",
+  accepted: "Accepted",
+  rejected: "Declined",
+  expired: "Expired",
+};
 
 const STATUS_CONFIG: Record<
-  string,
+  StatusKey,
   { color: string; bg: string; icon: typeof Clock }
 > = {
-  draft: { color: "text-gray-600", bg: "bg-gray-100", icon: Edit },
-  sent: { color: "text-blue-700", bg: "bg-blue-100", icon: Send },
-  viewed: { color: "text-yellow-700", bg: "bg-yellow-100", icon: FileText },
-  accepted: {
-    color: "text-green-700",
-    bg: "bg-green-100",
-    icon: CheckCircle2,
-  },
-  rejected: { color: "text-red-700", bg: "bg-red-100", icon: AlertCircle },
-  expired: { color: "text-gray-500", bg: "bg-gray-100", icon: Clock },
+  draft:    { color: "text-gray-600",  bg: "bg-gray-100",  icon: Edit       },
+  sent:     { color: "text-blue-700",  bg: "bg-blue-100",  icon: Send       },
+  viewed:   { color: "text-yellow-700",bg: "bg-yellow-100",icon: Eye        },
+  accepted: { color: "text-green-700", bg: "bg-green-100", icon: CheckCircle2 },
+  rejected: { color: "text-red-700",   bg: "bg-red-100",   icon: XCircle   },
+  expired:  { color: "text-gray-500",  bg: "bg-gray-100",  icon: Clock     },
 };
+
+// Allowed forward transitions from each status
+const TRANSITIONS: Record<StatusKey, { to: StatusKey; label: string }[]> = {
+  draft:    [{ to: "sent",     label: "Mark as Sent"     }],
+  sent:     [{ to: "viewed",   label: "Mark as Viewed"   },
+             { to: "accepted", label: "Mark as Accepted" },
+             { to: "rejected", label: "Mark as Declined" }],
+  viewed:   [{ to: "accepted", label: "Mark as Accepted" },
+             { to: "rejected", label: "Mark as Declined" }],
+  accepted: [],
+  rejected: [],
+  expired:  [],
+};
+
+// Proposals can only be edited while still in draft
+const isEditable = (status: StatusKey) => status === "draft";
+
+// ---------------------------------------------------------------------------
 
 export default function ProposalDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { company } = useSession();
   const { proposal, loading, error, updateProposal } = useProposal(id);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [showTransitions, setShowTransitions] = useState(false);
 
   const handleDownloadPDF = async () => {
     if (!proposal || !company) return;
@@ -59,19 +92,28 @@ export default function ProposalDetail() {
     }
   };
 
-  const handleMarkSent = async () => {
+  const handleStatusChange = async (next: StatusKey) => {
     if (!proposal) return;
+    const isTerminal = next === "accepted" || next === "rejected";
+    if (isTerminal) {
+      const label = STATUS_LABEL[next];
+      if (!confirm(`Mark this proposal as ${label}? This cannot be undone.`)) return;
+    }
+    setStatusUpdating(true);
+    setShowTransitions(false);
     try {
-      await updateProposal({
-        status: "sent",
-        sent_at: new Date().toISOString(),
-      });
-      toast.success("Proposal marked as sent");
+      const updates: Partial<Proposal> = { status: next };
+      if (next === "sent") updates.sent_at = new Date().toISOString();
+      await updateProposal(updates);
+      toast.success(`Proposal marked as ${STATUS_LABEL[next]}`);
     } catch {
       toast.error("Failed to update status");
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
+  // --- Loading / error states -----------------------------------------------
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -96,10 +138,12 @@ export default function ProposalDetail() {
     );
   }
 
-  const statusConfig = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.draft;
+  const status = proposal.status as StatusKey;
+  const statusConfig = STATUS_CONFIG[status] ?? STATUS_CONFIG.draft;
+  const StatusIcon = statusConfig.icon;
+  const transitions = TRANSITIONS[status] ?? [];
   const ai = proposal.ai_suggestions as AISuggestions;
   const lineItems = ai?.line_items || [];
-  const StatusIcon = statusConfig.icon;
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
@@ -112,21 +156,69 @@ export default function ProposalDetail() {
         >
           <ArrowLeft className="h-4 w-4" /> Proposals
         </Button>
-        <div className="flex gap-2">
-          {proposal.status === "draft" && (
-            <Button
-              variant="outline"
-              onClick={handleMarkSent}
-              className="gap-1"
-            >
-              <Send className="h-4 w-4" /> Mark as Sent
-            </Button>
+
+        <div className="flex gap-2 items-center">
+          {/* Status transition controls */}
+          {transitions.length > 0 && (
+            <div className="relative">
+              {transitions.length === 1 ? (
+                <Button
+                  variant="outline"
+                  onClick={() => handleStatusChange(transitions[0].to)}
+                  disabled={statusUpdating}
+                  className="gap-1"
+                >
+                  {statusUpdating
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Send className="h-4 w-4" />}
+                  {transitions[0].label}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTransitions((v) => !v)}
+                    disabled={statusUpdating}
+                    className="gap-1"
+                  >
+                    {statusUpdating
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <ChevronDown className="h-4 w-4" />}
+                    Update Status
+                  </Button>
+                  {showTransitions && (
+                    <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px]">
+                      {transitions.map((t) => (
+                        <button
+                          key={t.to}
+                          onClick={() => handleStatusChange(t.to)}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
+                            t.to === "accepted"
+                              ? "text-green-700"
+                              : t.to === "rejected"
+                              ? "text-red-600"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           )}
-          <Link to={`/proposals/${proposal.id}/edit`}>
-            <Button variant="outline" className="gap-1">
-              <Edit className="h-4 w-4" /> Edit
-            </Button>
-          </Link>
+
+          {/* Edit — only available on draft */}
+          {isEditable(status) && (
+            <Link to={`/proposals/${proposal.id}/edit`}>
+              <Button variant="outline" className="gap-1">
+                <Edit className="h-4 w-4" /> Edit
+              </Button>
+            </Link>
+          )}
+
           <Button
             onClick={handleDownloadPDF}
             className="gap-1 bg-red-600 hover:bg-red-700"
@@ -153,17 +245,21 @@ export default function ProposalDetail() {
                 <h1 className="text-xl font-bold text-gray-900">
                   {proposal.project_name || "Untitled Proposal"}
                 </h1>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 mt-0.5">
                   {proposal.proposal_number}
                 </p>
+                {proposal.sent_at && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Sent {new Date(proposal.sent_at).toLocaleDateString()}
+                  </p>
+                )}
               </div>
             </div>
             <span
               className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full ${statusConfig.bg} ${statusConfig.color}`}
             >
               <StatusIcon className="h-3.5 w-3.5" />
-              {proposal.status.charAt(0).toUpperCase() +
-                proposal.status.slice(1)}
+              {STATUS_LABEL[status]}
             </span>
           </div>
         </div>
@@ -171,24 +267,16 @@ export default function ProposalDetail() {
         {/* Client & Project */}
         <div className="border-b border-gray-200 p-6 grid grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-gray-500 uppercase mb-1">
-              Client
-            </p>
-            <p className="text-sm font-medium text-gray-900">
-              {proposal.client_name}
-            </p>
+            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Client</p>
+            <p className="text-sm font-medium text-gray-900">{proposal.client_name}</p>
             <p className="text-sm text-gray-600">{proposal.client_company}</p>
             {proposal.client_email && (
               <p className="text-sm text-gray-600">{proposal.client_email}</p>
             )}
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500 uppercase mb-1">
-              Project
-            </p>
-            <p className="text-sm font-medium text-gray-900">
-              {proposal.project_name}
-            </p>
+            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Project</p>
+            <p className="text-sm font-medium text-gray-900">{proposal.project_name}</p>
             <p className="text-sm text-gray-600">{proposal.project_address}</p>
           </div>
         </div>
@@ -214,33 +302,19 @@ export default function ProposalDetail() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 font-medium text-gray-500">
-                    Description
-                  </th>
-                  <th className="text-right py-2 font-medium text-gray-500">
-                    Qty
-                  </th>
-                  <th className="text-center py-2 font-medium text-gray-500">
-                    Unit
-                  </th>
-                  <th className="text-right py-2 font-medium text-gray-500">
-                    Unit Price
-                  </th>
-                  <th className="text-right py-2 font-medium text-gray-500">
-                    Total
-                  </th>
+                  <th className="text-left py-2 font-medium text-gray-500">Description</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Qty</th>
+                  <th className="text-center py-2 font-medium text-gray-500">Unit</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Unit Price</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {lineItems.map((item, i) => (
                   <tr key={i} className="border-b border-gray-100">
                     <td className="py-2 text-gray-800">{item.description}</td>
-                    <td className="py-2 text-right text-gray-600">
-                      {item.quantity}
-                    </td>
-                    <td className="py-2 text-center text-gray-600">
-                      {item.unit}
-                    </td>
+                    <td className="py-2 text-right text-gray-600">{item.quantity}</td>
+                    <td className="py-2 text-center text-gray-600">{item.unit}</td>
                     <td className="py-2 text-right text-gray-600">
                       ${item.unit_price.toLocaleString()}
                     </td>
@@ -252,10 +326,7 @@ export default function ProposalDetail() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-300">
-                  <td
-                    colSpan={4}
-                    className="py-3 text-right font-semibold text-gray-900"
-                  >
+                  <td colSpan={4} className="py-3 text-right font-semibold text-gray-900">
                     Total
                   </td>
                   <td className="py-3 text-right font-bold text-lg text-gray-900">
@@ -270,38 +341,24 @@ export default function ProposalDetail() {
         {/* Inclusions / Exclusions */}
         <div className="border-b border-gray-200 p-6 grid grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Inclusions
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Inclusions</h3>
             {proposal.inclusions ? (
               <ul className="space-y-1">
-                {proposal.inclusions
-                  .split("\n")
-                  .filter(Boolean)
-                  .map((item, i) => (
-                    <li key={i} className="text-sm text-gray-700">
-                      &bull; {item}
-                    </li>
-                  ))}
+                {proposal.inclusions.split("\n").filter(Boolean).map((item, i) => (
+                  <li key={i} className="text-sm text-gray-700">&bull; {item}</li>
+                ))}
               </ul>
             ) : (
               <p className="text-sm text-gray-400">None specified</p>
             )}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Exclusions
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Exclusions</h3>
             {proposal.exclusions ? (
               <ul className="space-y-1">
-                {proposal.exclusions
-                  .split("\n")
-                  .filter(Boolean)
-                  .map((item, i) => (
-                    <li key={i} className="text-sm text-gray-700">
-                      &bull; {item}
-                    </li>
-                  ))}
+                {proposal.exclusions.split("\n").filter(Boolean).map((item, i) => (
+                  <li key={i} className="text-sm text-gray-700">&bull; {item}</li>
+                ))}
               </ul>
             ) : (
               <p className="text-sm text-gray-400">None specified</p>
@@ -312,25 +369,19 @@ export default function ProposalDetail() {
         {/* Terms */}
         <div className="p-6 grid grid-cols-3 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">
-              Timeline
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Timeline</h3>
             <p className="text-sm text-gray-700">
               {proposal.timeline_description || "Not specified"}
             </p>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">
-              Payment Terms
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Payment Terms</h3>
             <p className="text-sm text-gray-700">
               {proposal.payment_terms || "Not specified"}
             </p>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">
-              Warranty
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Warranty</h3>
             <p className="text-sm text-gray-700">
               {proposal.warranty_terms || "Not specified"}
             </p>

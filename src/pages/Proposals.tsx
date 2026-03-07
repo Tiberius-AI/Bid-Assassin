@@ -6,13 +6,22 @@ import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600",
-  sent: "bg-blue-100 text-blue-700",
-  viewed: "bg-yellow-100 text-yellow-700",
+const STATUS_STYLE: Record<string, string> = {
+  draft:    "bg-gray-100 text-gray-600",
+  sent:     "bg-blue-100 text-blue-700",
+  viewed:   "bg-yellow-100 text-yellow-700",
   accepted: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
-  expired: "bg-gray-100 text-gray-500",
+  expired:  "bg-gray-100 text-gray-500",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft:    "Draft",
+  sent:     "Sent",
+  viewed:   "Viewed",
+  accepted: "Accepted",
+  rejected: "Declined",
+  expired:  "Expired",
 };
 
 export default function Proposals() {
@@ -127,11 +136,11 @@ export default function Proposals() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                        STATUS_COLORS[proposal.status] || STATUS_COLORS.draft
+                      className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                        STATUS_STYLE[proposal.status] ?? STATUS_STYLE.draft
                       }`}
                     >
-                      {proposal.status}
+                      {STATUS_LABEL[proposal.status] ?? proposal.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 hidden lg:table-cell">
