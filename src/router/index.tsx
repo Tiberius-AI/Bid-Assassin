@@ -8,6 +8,7 @@ import Dashboard from "@/pages/Dashboard.tsx";
 import Proposals from "@/pages/Proposals.tsx";
 import ProposalBuilder from "@/pages/ProposalBuilder.tsx";
 import ProposalDetail from "@/pages/ProposalDetail.tsx";
+import ProposalEdit from "@/pages/ProposalEdit.tsx";
 import Projects from "@/pages/Projects.tsx";
 import Clients from "@/pages/Clients.tsx";
 import Coaching from "@/pages/Coaching.tsx";
@@ -40,7 +41,7 @@ const router = createBrowserRouter([
           { path: "proposals", element: <Proposals /> },
           { path: "proposals/new", element: <ProposalBuilder /> },
           { path: "proposals/:id", element: <ProposalDetail /> },
-          { path: "proposals/:id/edit", element: <ProposalBuilder /> },
+          { path: "proposals/:id/edit", element: <ProposalEdit /> },
           { path: "projects", element: <Projects /> },
           { path: "clients", element: <Clients /> },
           { path: "coaching", element: <Coaching /> },
