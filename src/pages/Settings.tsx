@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [paymentTerms, setPaymentTerms] = useState(company?.default_payment_terms || "");
   const [warrantyTerms, setWarrantyTerms] = useState(company?.default_warranty_terms || "");
   const [proposalTone, setProposalTone] = useState(company?.proposal_tone || "professional");
+  const [companyBio, setCompanyBio] = useState(company?.company_bio || "");
+  const [defaultTerms, setDefaultTerms] = useState(company?.default_terms || "");
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -124,6 +126,8 @@ export default function SettingsPage() {
           default_payment_terms: paymentTerms,
           default_warranty_terms: warrantyTerms,
           proposal_tone: proposalTone,
+          company_bio: companyBio,
+          default_terms: defaultTerms,
         })
         .eq("id", company.id);
       if (companyError) throw companyError;
@@ -292,6 +296,16 @@ export default function SettingsPage() {
             <div>
               <Label>Default Warranty Terms</Label>
               <Textarea value={warrantyTerms} onChange={(e) => setWarrantyTerms(e.target.value)} rows={3} />
+            </div>
+            <div>
+              <Label>About Us</Label>
+              <p className="text-xs text-gray-400 mb-1">Company bio, licenses, and certifications shown on proposals.</p>
+              <Textarea value={companyBio} onChange={(e) => setCompanyBio(e.target.value)} rows={5} placeholder="Describe your company, experience, licenses, and certifications..." />
+            </div>
+            <div>
+              <Label>Default Terms &amp; Conditions</Label>
+              <p className="text-xs text-gray-400 mb-1">Boilerplate T&amp;C shown on proposals — can be edited per-proposal.</p>
+              <Textarea value={defaultTerms} onChange={(e) => setDefaultTerms(e.target.value)} rows={6} placeholder="Enter your standard terms and conditions..." />
             </div>
           </div>
         </div>

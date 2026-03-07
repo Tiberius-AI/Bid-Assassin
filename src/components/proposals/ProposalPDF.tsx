@@ -393,6 +393,22 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
           </View>
         )}
 
+        {/* About Us */}
+        {proposal.about_us && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About Us</Text>
+            <Text style={styles.bodyText}>{proposal.about_us}</Text>
+          </View>
+        )}
+
+        {/* Terms & Conditions */}
+        {proposal.terms_and_conditions && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Terms &amp; Conditions</Text>
+            <Text style={styles.bodyText}>{proposal.terms_and_conditions}</Text>
+          </View>
+        )}
+
         {/* Signature / Acceptance Block */}
         <View style={styles.signatureSection}>
           <Text style={styles.sectionTitle}>Authorization &amp; Acceptance</Text>

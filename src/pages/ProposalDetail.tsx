@@ -414,6 +414,22 @@ export default function ProposalDetail() {
           </div>
         )}
 
+        {/* About Us */}
+        {proposal.about_us && (
+          <div className="border-b border-gray-200 p-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">About Us</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{proposal.about_us}</p>
+          </div>
+        )}
+
+        {/* Terms & Conditions */}
+        {proposal.terms_and_conditions && (
+          <div className="border-b border-gray-200 p-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Terms &amp; Conditions</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{proposal.terms_and_conditions}</p>
+          </div>
+        )}
+
         {/* Signature / Acceptance Block */}
         <div className="p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-1">

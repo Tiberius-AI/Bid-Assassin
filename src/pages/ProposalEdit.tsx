@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useSession } from "@/context/SessionContext";
 import { useProposal } from "@/hooks/useProposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ function newLineItem(): LineItem {
 export default function ProposalEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { company } = useSession();
   const { proposal, loading, error, updateProposal } = useProposal(id);
 
   const [initialised, setInitialised] = useState(false);
@@ -47,6 +49,10 @@ export default function ProposalEdit() {
   const [paymentTerms, setPaymentTerms] = useState("");
   const [warrantyTerms, setWarrantyTerms] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+
+  // About Us & T&C
+  const [aboutUs, setAboutUs] = useState("");
+  const [termsAndConditions, setTermsAndConditions] = useState("");
 
   // Media
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
@@ -77,6 +83,8 @@ export default function ProposalEdit() {
     setLineItems(ai?.line_items?.length ? [...ai.line_items] : [newLineItem()]);
     setClientLogoUrl(proposal.client_logo_url || null);
     setPhotos(proposal.project_photos || []);
+    setAboutUs(proposal.about_us ?? company?.company_bio ?? "");
+    setTermsAndConditions(proposal.terms_and_conditions ?? company?.default_terms ?? "");
 
     const defaultExpiry = proposal.expires_at
       ? new Date(proposal.expires_at)
@@ -194,6 +202,8 @@ export default function ProposalEdit() {
         expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
         client_logo_url: clientLogoUrl,
         project_photos: photos,
+        about_us: aboutUs,
+        terms_and_conditions: termsAndConditions,
         total_amount: total,
         ai_suggestions: { ...existingAI, line_items: lineItems },
       });
@@ -495,6 +505,32 @@ export default function ProposalEdit() {
             </Button>
             <span className="text-xs text-gray-400 ml-3">PNG or JPG, multiple files allowed</span>
           </div>
+        </div>
+
+        {/* About Us */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">About Us</h2>
+          <p className="text-sm text-gray-500 mb-4">Pre-filled from your company settings — edit for this proposal if needed.</p>
+          <Textarea
+            value={aboutUs}
+            onChange={(e) => setAboutUs(e.target.value)}
+            rows={5}
+            placeholder="Describe your company, experience, licenses, and certifications..."
+            className="resize-y"
+          />
+        </div>
+
+        {/* Terms & Conditions */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Terms & Conditions</h2>
+          <p className="text-sm text-gray-500 mb-4">Pre-filled from your default T&C — edit for this proposal if needed.</p>
+          <Textarea
+            value={termsAndConditions}
+            onChange={(e) => setTermsAndConditions(e.target.value)}
+            rows={8}
+            placeholder="Enter terms and conditions..."
+            className="resize-y"
+          />
         </div>
 
         {/* Terms */}

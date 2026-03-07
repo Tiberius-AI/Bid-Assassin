@@ -29,6 +29,8 @@ export interface Company {
   default_warranty_terms: string;
   proposal_tone: "professional" | "friendly" | "aggressive";
   logo_url: string | null;
+  company_bio: string | null;
+  default_terms: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -98,6 +100,8 @@ export interface Proposal {
   expires_at: string | null;
   client_logo_url: string | null;
   project_photos: string[];
+  about_us: string | null;
+  terms_and_conditions: string | null;
   created_at: string;
   updated_at: string;
 }
