@@ -141,13 +141,22 @@ export default function ProposalDetail() {
         {/* Header */}
         <div className="border-b border-gray-200 p-6">
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                {proposal.project_name || "Untitled Proposal"}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {proposal.proposal_number}
-              </p>
+            <div className="flex items-start gap-4">
+              {company?.logo_url && (
+                <img
+                  src={company.logo_url}
+                  alt={`${company.name} logo`}
+                  className="h-12 w-auto max-w-[120px] object-contain rounded"
+                />
+              )}
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {proposal.project_name || "Untitled Proposal"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {proposal.proposal_number}
+                </p>
+              </div>
             </div>
             <span
               className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full ${statusConfig.bg} ${statusConfig.color}`}

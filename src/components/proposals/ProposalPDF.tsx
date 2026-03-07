@@ -3,6 +3,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { Proposal, Company } from "@/types";
@@ -22,6 +23,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#DC2626",
     paddingBottom: 15,
+  },
+  logo: {
+    maxHeight: 48,
+    maxWidth: 120,
+    objectFit: "contain" as const,
+    marginBottom: 6,
   },
   companyName: {
     fontSize: 18,
@@ -154,6 +161,9 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
         {/* Header */}
         <View style={styles.header}>
           <View>
+            {company.logo_url && (
+              <Image src={company.logo_url} style={styles.logo} />
+            )}
             <Text style={styles.companyName}>{company.name}</Text>
             <Text style={styles.companyDetails}>
               {[company.address, company.city, company.state, company.zip]
