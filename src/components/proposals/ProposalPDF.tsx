@@ -312,15 +312,34 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
               </Text>
             </View>
           ))}
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalText, styles.colDesc]} />
-            <Text style={[styles.totalText, styles.colQty]} />
-            <Text style={[styles.totalText, styles.colUnit]} />
-            <Text style={[styles.totalText, styles.colPrice]}>Total:</Text>
-            <Text style={[styles.totalText, styles.colTotal]}>
-              ${(proposal.total_amount || 0).toLocaleString()}
-            </Text>
-          </View>
+          {ai?.pricing_mode === "monthly" ? (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={[styles.totalText, styles.colDesc]} />
+                <Text style={[styles.totalText, styles.colQty]} />
+                <Text style={[styles.totalText, styles.colUnit]} />
+                <Text style={[styles.totalText, styles.colPrice]}>Monthly Total:</Text>
+                <Text style={[styles.totalText, styles.colTotal]}>
+                  ${(proposal.total_amount || 0).toLocaleString()}/mo
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", paddingTop: 4, paddingBottom: 4 }}>
+                <Text style={{ flex: 1, fontSize: 8, color: "#9CA3AF", textAlign: "right" as const }}>
+                  Annual Contract Value: ${((proposal.total_amount || 0) * 12).toLocaleString()}/yr
+                </Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.totalRow}>
+              <Text style={[styles.totalText, styles.colDesc]} />
+              <Text style={[styles.totalText, styles.colQty]} />
+              <Text style={[styles.totalText, styles.colUnit]} />
+              <Text style={[styles.totalText, styles.colPrice]}>Total:</Text>
+              <Text style={[styles.totalText, styles.colTotal]}>
+                ${(proposal.total_amount || 0).toLocaleString()}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Inclusions / Exclusions */}

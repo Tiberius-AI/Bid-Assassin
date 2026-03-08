@@ -395,14 +395,35 @@ export default function ProposalDetail() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-300">
-                  <td colSpan={4} className="py-3 text-right font-semibold text-gray-900">
-                    Total
-                  </td>
-                  <td className="py-3 text-right font-bold text-lg text-gray-900">
-                    ${(proposal.total_amount || 0).toLocaleString()}
-                  </td>
-                </tr>
+                {ai?.pricing_mode === "monthly" ? (
+                  <>
+                    <tr className="border-t-2 border-gray-300">
+                      <td colSpan={4} className="py-3 text-right font-semibold text-gray-900">
+                        Monthly Total
+                      </td>
+                      <td className="py-3 text-right font-bold text-lg text-gray-900">
+                        ${(proposal.total_amount || 0).toLocaleString()}<span className="text-sm font-normal text-gray-500">/mo</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="pb-1 text-right text-xs text-gray-400">
+                        Annual Contract Value
+                      </td>
+                      <td className="pb-1 text-right text-xs font-medium text-gray-500">
+                        ${((proposal.total_amount || 0) * 12).toLocaleString()}/yr
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr className="border-t-2 border-gray-300">
+                    <td colSpan={4} className="py-3 text-right font-semibold text-gray-900">
+                      Total
+                    </td>
+                    <td className="py-3 text-right font-bold text-lg text-gray-900">
+                      ${(proposal.total_amount || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                )}
               </tfoot>
             </table>
           </div>

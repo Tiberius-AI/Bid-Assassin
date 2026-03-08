@@ -50,6 +50,7 @@ export interface AISuggestions {
   inclusions: string[];
   timeline: string;
   total_amount: number;
+  pricing_mode: "monthly" | "annual";
   pricing_confidence: "low" | "medium" | "high";
   market_range: { low: number; high: number };
   suggestions: string[];

@@ -162,6 +162,20 @@ Company Profile:
 ${company.license_number ? `- License: ${company.license_number}` : ""}
 ${company.insurance_provider ? `- Insurance: ${company.insurance_provider}` : ""}
 
+PRICING MODE — follow this exactly:
+
+For RECURRING or MAINTENANCE services (landscaping, janitorial, cleaning, security, HVAC maintenance, snow removal, pest control, etc.):
+  - Set "pricing_mode": "monthly"
+  - All line item quantities must be PER MONTH (e.g., 4 visits/month for weekly service — NOT 52/year)
+  - Units must reflect per-month cadence: "visits/month", "applications/month", "months", etc.
+  - "total_amount" = the MONTHLY contract value (e.g., 1450 for $1,450/month)
+  - Do NOT multiply out to annual — the display layer handles that
+
+For ONE-TIME or PROJECT-BASED work (construction, renovation, painting, drywall, roofing, flooring, concrete, etc.):
+  - Set "pricing_mode": "annual"
+  - Quantities represent full project scope (sq ft, linear ft, units, lump sum, etc.)
+  - "total_amount" = full project total
+
 IMPORTANT: Always respond with valid JSON matching this exact structure:
 {
   "line_items": [{ "description": string, "quantity": number, "unit": string, "unit_price": number, "total_price": number }],
@@ -170,6 +184,7 @@ IMPORTANT: Always respond with valid JSON matching this exact structure:
   "inclusions": string[] (items included),
   "timeline": string (estimated timeline),
   "total_amount": number,
+  "pricing_mode": "monthly" | "annual",
   "pricing_confidence": "low" | "medium" | "high",
   "market_range": { "low": number, "high": number },
   "suggestions": string[] (tips to improve the proposal)
