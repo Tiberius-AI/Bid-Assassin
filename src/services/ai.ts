@@ -176,6 +176,20 @@ For ONE-TIME or PROJECT-BASED work (construction, renovation, painting, drywall,
   - Quantities represent full project scope (sq ft, linear ft, units, lump sum, etc.)
   - "total_amount" = full project total
 
+USER-STATED PRICING — highest priority rule:
+
+If the user's scope notes contain explicit pricing (e.g. "$1,450/month for mowing, edging, bed weeding, and trash patrol" or "$125/month for irrigation"), those figures are the SOURCE OF TRUTH. You must never silently generate a different total.
+
+Rules when the user states a price:
+1. BUNDLED price (one price for multiple services): Create a SINGLE line item for that bundle at exactly that price. Do not split it into sub-items with individually priced services — that will always produce a different total.
+   Example: "$1,450/month for mowing, edging, bed weeding, trash patrol" → one line item "Lawn Maintenance (Mowing, Edging, Bed Weeding, Trash Patrol)", qty 1, unit "month", unit_price 1450, total_price 1450.
+
+2. SEPARATE prices stated for separate services: Create one line item per stated service at its stated price. Each line item's total_price must exactly match what the user said.
+
+3. Market data disagreement: If your market data suggests a different price, do NOT change the user's number. Instead, add a note to the "suggestions" array (e.g. "Market rate for this scope is typically $1,600–$1,800/month. Consider adjusting your price."). The proposal total must still reflect the user's stated price.
+
+4. Partial pricing: If the user gives a total but no breakdown, present it as a single lump-sum line item rather than guessing a breakdown that might not add up.
+
 IMPORTANT: Always respond with valid JSON matching this exact structure:
 {
   "line_items": [{ "description": string, "quantity": number, "unit": string, "unit_price": number, "total_price": number }],
