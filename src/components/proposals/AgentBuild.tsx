@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { agentIntakeChat, researchClient, generateProposal } from "@/services/ai";
 import ProposalReview from "./ProposalReview";
+import supabase from "@/supabase";
+import { toast } from "react-hot-toast";
 import {
   Loader2,
   Send,
@@ -11,6 +13,10 @@ import {
   CheckCircle2,
   Circle,
   Search,
+  Upload,
+  ImageIcon,
+  X,
+  CheckCircle,
 } from "lucide-react";
 import type { Company, AISuggestions, ChatMessage, ClientResearch } from "@/types";
 
@@ -29,10 +35,11 @@ interface AgentBuildProps {
     clientResearch?: ClientResearch;
     agentConversation?: ChatMessage[];
     intakeAnswers?: Record<string, string>;
+    projectPhotos?: string[];
   }) => Promise<void>;
 }
 
-type Phase = "intake" | "researching" | "generating" | "review";
+type Phase = "intake" | "assets" | "researching" | "generating" | "review";
 
 interface ResearchStep {
   label: string;
@@ -61,13 +68,27 @@ export default function AgentBuild({ company, onSave }: AgentBuildProps) {
   const [paymentTerms, setPaymentTerms] = useState(company.default_payment_terms);
   const [warrantyTerms, setWarrantyTerms] = useState(company.default_warranty_terms);
 
+  // Assets state (logo + photos collected before research)
+  const [localLogoUrl, setLocalLogoUrl] = useState<string | null>(company.logo_url);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
+  const [photosUploading, setPhotosUploading] = useState(false);
+  // Stable key for pending photo uploads — won't change across renders
+  const pendingKeyRef = useRef(`pending-${Date.now()}`);
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const savedIntakeRef = useRef<Record<string, string>>({});
+  const savedMessagesRef = useRef<ChatMessage[]>([]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // --- Intake chat -----------------------------------------------------------
 
   const sendMessage = async () => {
     if (!input.trim() || sending) return;
@@ -94,8 +115,10 @@ export default function AgentBuild({ company, onSave }: AgentBuildProps) {
 
       if (result.intakeComplete && result.intakeData) {
         setIntakeData(result.intakeData);
-        // Start research phase
-        await startResearch(result.intakeData, [...updatedMessages, assistantMsg]);
+        savedIntakeRef.current = result.intakeData;
+        savedMessagesRef.current = [...updatedMessages, assistantMsg];
+        // Go to assets phase before research
+        setPhase("assets");
       }
     } catch (err) {
       console.error("AgentBuild intake error:", err);
@@ -111,6 +134,78 @@ export default function AgentBuild({ company, onSave }: AgentBuildProps) {
     }
   };
 
+  // --- Assets: logo upload ---------------------------------------------------
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      toast.error("Only PNG and JPG files are allowed");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo must be under 2MB");
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const ext = file.type === "image/png" ? "png" : "jpg";
+      const path = `${company.id}/logo.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("company-logos")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("company-logos").getPublicUrl(path);
+      const url = `${data.publicUrl}?t=${Date.now()}`;
+      await supabase.from("companies").update({ logo_url: url }).eq("id", company.id);
+      setLocalLogoUrl(url);
+      toast.success("Logo uploaded!");
+    } catch {
+      toast.error("Failed to upload logo");
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  // --- Assets: photo upload --------------------------------------------------
+
+  const handlePhotosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const valid = files.filter((f) => ["image/png", "image/jpeg"].includes(f.type));
+    if (valid.length !== files.length) toast.error("Only PNG/JPG files accepted");
+    if (!valid.length) return;
+
+    setPhotosUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of valid) {
+        const ext = file.type === "image/png" ? "png" : "jpg";
+        const path = `${pendingKeyRef.current}/photos/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("proposal-assets")
+          .upload(path, file, { contentType: file.type });
+        if (upErr) { toast.error(`Failed to upload ${file.name}`); continue; }
+        const { data } = supabase.storage.from("proposal-assets").getPublicUrl(path);
+        uploaded.push(data.publicUrl);
+      }
+      setPendingPhotos((prev) => [...prev, ...uploaded]);
+      if (uploaded.length)
+        toast.success(`${uploaded.length} photo${uploaded.length > 1 ? "s" : ""} added`);
+    } finally {
+      setPhotosUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
+  const removePhoto = (url: string) =>
+    setPendingPhotos((prev) => prev.filter((p) => p !== url));
+
+  // --- Research + generation ------------------------------------------------
+
   const startResearch = async (
     intake: Record<string, string>,
     _conversation: ChatMessage[]
@@ -125,10 +220,7 @@ export default function AgentBuild({ company, onSave }: AgentBuildProps) {
     setResearchSteps(steps);
 
     try {
-      // Research client
-      setResearchSteps((prev) =>
-        prev.map((s, i) => (i === 0 ? { ...s, done: true } : s))
-      );
+      setResearchSteps((prev) => prev.map((s, i) => (i === 0 ? { ...s, done: true } : s)));
 
       const rawResearch = await researchClient(
         intake.client_name || "",
@@ -136,9 +228,7 @@ export default function AgentBuild({ company, onSave }: AgentBuildProps) {
         intake.project_address || ""
       );
 
-      setResearchSteps((prev) =>
-        prev.map((s, i) => (i <= 1 ? { ...s, done: true } : s))
-      );
+      setResearchSteps((prev) => prev.map((s, i) => (i <= 1 ? { ...s, done: true } : s)));
 
       let research: ClientResearch;
       try {
@@ -158,11 +248,8 @@ export default function AgentBuild({ company, onSave }: AgentBuildProps) {
       }
       setClientResearch(research);
 
-      setResearchSteps((prev) =>
-        prev.map((s, i) => (i <= 2 ? { ...s, done: true } : s))
-      );
+      setResearchSteps((prev) => prev.map((s, i) => (i <= 2 ? { ...s, done: true } : s)));
 
-      // Generate proposal
       setPhase("generating");
       const scopeNotes = `
 Client: ${intake.client_company} (${intake.client_name})
@@ -186,7 +273,6 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
       });
 
       setResearchSteps((prev) => prev.map((s) => ({ ...s, done: true })));
-
       setAiSuggestions(result);
       setPhase("review");
     } catch {
@@ -200,6 +286,8 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
       setMessages((prev) => [...prev, errorMsg]);
     }
   };
+
+  // --- Save ------------------------------------------------------------------
 
   const handleSave = async () => {
     if (!aiSuggestions) return;
@@ -218,10 +306,12 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
       clientResearch: clientResearch || undefined,
       agentConversation: messages,
       intakeAnswers: intakeData,
+      projectPhotos: pendingPhotos,
     });
   };
 
-  // Research/Generating phase
+  // --- Phases: researching / generating -------------------------------------
+
   if (phase === "researching" || phase === "generating") {
     return (
       <div className="flex items-center justify-center h-full">
@@ -244,11 +334,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
                 ) : (
                   <Circle className="h-5 w-5 text-gray-300 shrink-0" />
                 )}
-                <span
-                  className={`text-sm ${
-                    step.done ? "text-gray-900" : "text-gray-400"
-                  }`}
-                >
+                <span className={`text-sm ${step.done ? "text-gray-900" : "text-gray-400"}`}>
                   {step.label}
                 </span>
               </div>
@@ -259,7 +345,8 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
     );
   }
 
-  // Review phase
+  // --- Phase: review --------------------------------------------------------
+
   if (phase === "review" && aiSuggestions) {
     return (
       <ProposalReview
@@ -279,7 +366,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
         onUpdatePaymentTerms={setPaymentTerms}
         onUpdateWarrantyTerms={setWarrantyTerms}
         onSave={handleSave}
-        onBack={() => setPhase("intake")}
+        onBack={() => setPhase("assets")}
         buildMode="agent"
         clientResearch={clientResearch}
         agentConversation={messages}
@@ -287,18 +374,182 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
     );
   }
 
-  // Intake phase - Chat UI
+  // --- Phase: assets --------------------------------------------------------
+
+  if (phase === "assets") {
+    return (
+      <div className="flex flex-col h-full max-w-3xl mx-auto p-6 overflow-y-auto">
+        {/* Agent message */}
+        <div className="flex gap-3 mb-6">
+          <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+            <Bot className="h-4 w-4" />
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 max-w-[85%]">
+            <p>
+              Great — I have everything I need to build the proposal. Before I start, let's add a few
+              finishing touches that will make it look polished and professional.
+            </p>
+          </div>
+        </div>
+
+        {/* Logo card */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Company Logo</h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Your logo appears in the proposal header and PDF.
+          </p>
+
+          {localLogoUrl ? (
+            <div className="flex items-center gap-4">
+              <img
+                src={localLogoUrl}
+                alt="Company logo"
+                className="h-12 w-auto max-w-[120px] object-contain rounded border border-gray-200 bg-gray-50 p-1"
+              />
+              <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                <CheckCircle className="h-4 w-4" />
+                Logo is set
+              </div>
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="text-xs text-gray-400 hover:text-gray-600 underline ml-auto"
+              >
+                Replace
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-28 rounded border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 text-gray-400 text-xs">
+                No logo
+              </div>
+              <div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={logoUploading}
+                  onClick={() => logoInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  {logoUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {logoUploading ? "Uploading..." : "Upload Logo"}
+                </Button>
+                <p className="text-xs text-gray-400 mt-1">PNG or JPG, max 2MB</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Photos card */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 mb-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Project Photos</h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Before/after shots, reference work, or portfolio images. These appear in the proposal
+            and PDF — great for visual trades like landscaping.
+          </p>
+
+          {pendingPhotos.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+              {pendingPhotos.map((url) => (
+                <div key={url} className="relative group aspect-square">
+                  <img
+                    src={url}
+                    alt="Project photo"
+                    className="w-full h-full object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(url)}
+                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              multiple
+              className="hidden"
+              onChange={handlePhotosUpload}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={photosUploading}
+              onClick={() => photoInputRef.current?.click()}
+              className="gap-2"
+            >
+              {photosUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImageIcon className="h-4 w-4" />
+              )}
+              {photosUploading ? "Uploading..." : "Add Photos"}
+            </Button>
+            <span className="text-xs text-gray-400 ml-3">PNG or JPG, multiple files OK</span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-3 justify-end">
+          <Button
+            variant="outline"
+            onClick={() => startResearch(savedIntakeRef.current, savedMessagesRef.current)}
+            className="text-gray-500"
+          >
+            Skip, build now
+          </Button>
+          <Button
+            onClick={() => startResearch(savedIntakeRef.current, savedMessagesRef.current)}
+            disabled={logoUploading || photosUploading}
+            className="bg-red-600 hover:bg-red-700 gap-2"
+          >
+            {logoUploading || photosUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            Build My Proposal
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Phase: intake (chat) -------------------------------------------------
+
   return (
     <div className="flex flex-col h-full max-w-3xl mx-auto">
       {/* Chat Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex gap-3 ${
-              msg.role === "user" ? "flex-row-reverse" : ""
-            }`}
-          >
+          <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                 msg.role === "assistant"

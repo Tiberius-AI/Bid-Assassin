@@ -29,6 +29,7 @@ export default function ProposalBuilder() {
     clientResearch?: ClientResearch;
     agentConversation?: ChatMessage[];
     intakeAnswers?: Record<string, string>;
+    projectPhotos?: string[];
   }) => {
     try {
       const proposalData = {
@@ -50,6 +51,7 @@ export default function ProposalBuilder() {
         client_research: data.clientResearch || {},
         agent_conversation: data.agentConversation || [],
         intake_answers: data.intakeAnswers || {},
+        project_photos: data.projectPhotos || [],
       };
 
       if (id) {
