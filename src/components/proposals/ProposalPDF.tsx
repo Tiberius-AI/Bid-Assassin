@@ -438,29 +438,61 @@ export default function ProposalPDF({ proposal, company }: ProposalPDFProps) {
               : ""}
           </Text>
           <View style={styles.signatureGrid}>
-            {/* Client column */}
-            <View style={styles.signatureColumn}>
-              <Text style={styles.signatureColumnLabel}>
-                Client / Authorized Representative
-              </Text>
-              {(["Printed Name", "Title", "Signature", "Date"] as const).map((label) => (
-                <View key={label} style={styles.signatureField}>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureFieldLabel}>{label}</Text>
-                </View>
-              ))}
-            </View>
             {/* Contractor column */}
             <View style={styles.signatureColumn}>
               <Text style={styles.signatureColumnLabel}>
                 Contractor — {company.name}
               </Text>
-              {(["Printed Name", "Title", "Signature", "Date"] as const).map((label) => (
-                <View key={label} style={styles.signatureField}>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureFieldLabel}>{label}</Text>
+              {proposal.contractor_signature ? (
+                <View style={styles.signatureField}>
+                  <Image
+                    src={proposal.contractor_signature}
+                    style={{ height: 60, width: 180, objectFit: "contain" as const, marginBottom: 3 }}
+                  />
+                  <Text style={styles.signatureFieldLabel}>
+                    Signed {proposal.contractor_signed_at
+                      ? new Date(proposal.contractor_signed_at).toLocaleDateString()
+                      : ""}
+                  </Text>
                 </View>
-              ))}
+              ) : (
+                <>
+                  {(["Printed Name", "Title", "Signature", "Date"] as const).map((label) => (
+                    <View key={label} style={styles.signatureField}>
+                      <View style={styles.signatureLine} />
+                      <Text style={styles.signatureFieldLabel}>{label}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
+            {/* Client column */}
+            <View style={styles.signatureColumn}>
+              <Text style={styles.signatureColumnLabel}>
+                Client / Authorized Representative
+              </Text>
+              {proposal.client_signature ? (
+                <View style={styles.signatureField}>
+                  <Image
+                    src={proposal.client_signature}
+                    style={{ height: 60, width: 180, objectFit: "contain" as const, marginBottom: 3 }}
+                  />
+                  <Text style={styles.signatureFieldLabel}>
+                    Signed {proposal.client_signed_at
+                      ? new Date(proposal.client_signed_at).toLocaleDateString()
+                      : ""}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {(["Printed Name", "Title", "Signature", "Date"] as const).map((label) => (
+                    <View key={label} style={styles.signatureField}>
+                      <View style={styles.signatureLine} />
+                      <Text style={styles.signatureFieldLabel}>{label}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
             </View>
           </View>
         </View>

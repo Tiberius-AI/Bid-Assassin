@@ -13,6 +13,7 @@ import Projects from "@/pages/Projects.tsx";
 import Clients from "@/pages/Clients.tsx";
 import Coaching from "@/pages/Coaching.tsx";
 import SettingsPage from "@/pages/Settings.tsx";
+import ProposalSign from "@/pages/ProposalSign.tsx";
 
 const router = createBrowserRouter([
   {
@@ -31,6 +32,10 @@ const router = createBrowserRouter([
       {
         path: "onboarding",
         element: <Onboarding />,
+      },
+      {
+        path: "sign/:token",
+        element: <ProposalSign />,
       },
       // Protected routes with AppLayout
       {

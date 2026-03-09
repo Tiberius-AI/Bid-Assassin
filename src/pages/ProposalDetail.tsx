@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { useProposal } from "@/hooks/useProposals";
 import supabase from "@/supabase";
+import SignaturePad from "@/components/proposals/SignaturePad";
 import { pdf } from "@react-pdf/renderer";
 import ProposalPDF from "@/components/proposals/ProposalPDF";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export default function ProposalDetail() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showTransitions, setShowTransitions] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savingSignature, setSavingSignature] = useState(false);
 
   const handleDownloadPDF = async () => {
     if (!proposal || !company) return;
@@ -129,6 +131,29 @@ export default function ProposalDetail() {
     } finally {
       setStatusUpdating(false);
     }
+  };
+
+  const handleContractorSign = async (dataUrl: string) => {
+    if (!proposal) return;
+    setSavingSignature(true);
+    try {
+      await updateProposal({
+        contractor_signature: dataUrl,
+        contractor_signed_at: new Date().toISOString(),
+      });
+      toast.success("Signature saved!");
+    } catch {
+      toast.error("Failed to save signature");
+    } finally {
+      setSavingSignature(false);
+    }
+  };
+
+  const handleCopyClientLink = () => {
+    if (!proposal?.signature_token) return;
+    const link = `${window.location.origin}/sign/${proposal.signature_token}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Client signing link copied to clipboard!");
   };
 
   const handleSaveTemplate = async () => {
@@ -191,7 +216,7 @@ export default function ProposalDetail() {
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       {/* Top Actions */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         <Button
           variant="outline"
           onClick={() => navigate("/proposals")}
@@ -200,7 +225,7 @@ export default function ProposalDetail() {
           <ArrowLeft className="h-4 w-4" /> Proposals
         </Button>
 
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center ml-auto">
           {/* Status transition controls */}
           {transitions.length > 0 && (
             <div className="relative">
@@ -328,7 +353,7 @@ export default function ProposalDetail() {
         </div>
 
         {/* Client & Project */}
-        <div className="border-b border-gray-200 p-6 grid grid-cols-2 gap-6">
+        <div className="border-b border-gray-200 p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase mb-1">Client</p>
             {proposal.client_logo_url && (
@@ -369,7 +394,45 @@ export default function ProposalDetail() {
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <DollarSign className="h-4 w-4" /> Pricing
             </h3>
-            <table className="w-full text-sm">
+
+            {/* Mobile: card-per-item */}
+            <div className="sm:hidden space-y-3">
+              {lineItems.map((item, i) => (
+                <div key={i} className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{item.description}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {item.quantity} {item.unit} &middot; ${item.unit_price.toLocaleString()} each
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 shrink-0">
+                    ${item.total_price.toLocaleString()}
+                  </p>
+                </div>
+              ))}
+              <div className="border-t-2 border-gray-300 pt-3 space-y-1">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {ai?.pricing_mode === "monthly" ? "Monthly Total" : "Total"}
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">
+                    ${(proposal.total_amount || 0).toLocaleString()}
+                    {ai?.pricing_mode === "monthly" && <span className="text-sm font-normal text-gray-500">/mo</span>}
+                  </span>
+                </div>
+                {ai?.pricing_mode === "monthly" && (
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-gray-400">Annual Contract Value</span>
+                    <span className="text-xs font-medium text-gray-500">
+                      ${((proposal.total_amount || 0) * 12).toLocaleString()}/yr
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop: full table */}
+            <table className="hidden sm:table w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-2 font-medium text-gray-500">Description</th>
@@ -430,7 +493,7 @@ export default function ProposalDetail() {
         )}
 
         {/* Inclusions / Exclusions */}
-        <div className="border-b border-gray-200 p-6 grid grid-cols-2 gap-6">
+        <div className="border-b border-gray-200 p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Inclusions</h3>
             {proposal.inclusions ? (
@@ -458,7 +521,7 @@ export default function ProposalDetail() {
         </div>
 
         {/* Terms */}
-        <div className="border-b border-gray-200 p-6 grid grid-cols-3 gap-6">
+        <div className="border-b border-gray-200 p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-1">Timeline</h3>
             <p className="text-sm text-gray-700">
@@ -520,46 +583,88 @@ export default function ProposalDetail() {
               <> This proposal is valid until <span className="font-medium">{new Date(proposal.expires_at).toLocaleDateString()}</span>.</>
             )}
           </p>
-          <div className="grid grid-cols-2 gap-10">
-            {/* Client */}
-            <div className="space-y-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Client / Authorized Representative</p>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Printed Name</p>
-              </div>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Title</p>
-              </div>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Signature</p>
-              </div>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Date</p>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-10">
+            {/* Contractor signs in-app */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Contractor ({company?.name})
+              </p>
+              {proposal.contractor_signature ? (
+                <div className="space-y-2">
+                  <div className="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                    <img
+                      src={proposal.contractor_signature}
+                      alt="Contractor signature"
+                      className="max-h-[100px] object-contain"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Signed {proposal.contractor_signed_at
+                      ? new Date(proposal.contractor_signed_at).toLocaleString()
+                      : ""}
+                  </p>
+                  <button
+                    className="text-xs text-red-600 underline"
+                    onClick={() => updateProposal({ contractor_signature: null, contractor_signed_at: null })}
+                  >
+                    Clear signature
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400 mb-1">Draw your signature below:</p>
+                  <SignaturePad
+                    onSign={handleContractorSign}
+                    className="w-full"
+                  />
+                  {savingSignature && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-            {/* Contractor */}
-            <div className="space-y-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contractor ({company?.name})</p>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Printed Name</p>
-              </div>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Title</p>
-              </div>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Signature</p>
-              </div>
-              <div>
-                <div className="border-b border-gray-400 h-8 mb-1" />
-                <p className="text-xs text-gray-400">Date</p>
-              </div>
+
+            {/* Client signs via shareable link */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Client / Authorized Representative
+              </p>
+              {proposal.client_signature ? (
+                <div className="space-y-2">
+                  <div className="border border-gray-200 rounded-lg p-2 bg-green-50">
+                    <img
+                      src={proposal.client_signature}
+                      alt="Client signature"
+                      className="max-h-[100px] object-contain"
+                    />
+                  </div>
+                  <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Client signed {proposal.client_signed_at
+                      ? new Date(proposal.client_signed_at).toLocaleString()
+                      : ""}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-3">
+                      Share a signing link with your client. They can sign without creating an account.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCopyClientLink}
+                      className="text-xs"
+                    >
+                      Copy Client Signing Link
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 text-center">Awaiting client signature</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -103,6 +103,11 @@ export interface Proposal {
   project_photos: string[];
   about_us: string | null;
   terms_and_conditions: string | null;
+  contractor_signature: string | null;
+  contractor_signed_at: string | null;
+  client_signature: string | null;
+  client_signed_at: string | null;
+  signature_token: string | null;
   created_at: string;
   updated_at: string;
 }
