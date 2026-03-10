@@ -9,8 +9,8 @@
  *
  * Env vars:
  *   RESEND_API_KEY
- *   FROM_EMAIL   (e.g. "Bid Assassin <digest@bidassassin.ai>")
- *   APP_URL      (e.g. "https://bidassassin.ai")
+ *   FROM_EMAIL   (e.g. "Bid Assassin <digest@quotefortune.com>")
+ *   APP_URL      (e.g. "https://bidassassin.com")
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -133,8 +133,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const from = Deno.env.get("FROM_EMAIL") ?? "Bid Assassin <digest@bidassassin.ai>";
-  const appUrl = Deno.env.get("APP_URL") ?? "https://bidassassin.ai";
+  const from = Deno.env.get("FROM_EMAIL") ?? "Bid Assassin <digest@quotefortune.com>";
+  const appUrl = Deno.env.get("APP_URL") ?? "https://bidassassin.com";
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
