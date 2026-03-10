@@ -1,17 +1,77 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession } from "@/context/SessionContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import supabase from "@/supabase";
 import { toast } from "react-hot-toast";
-import { Loader2, Save, Upload, X } from "lucide-react";
+import { Loader2, Save, Upload, X, Bell } from "lucide-react";
 
 export default function SettingsPage() {
-  const { profile, company, refreshProfile, refreshCompany } = useSession();
+  const { profile, company, session, refreshProfile, refreshCompany } = useSession();
   const [saving, setSaving] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+
+  // ---- Notification Preferences state ----
+  const [notifLoading, setNotifLoading] = useState(true);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [hotAlertThreshold, setHotAlertThreshold] = useState(80);
+  const [minScoreThreshold, setMinScoreThreshold] = useState(50);
+  const [digestEnabled, setDigestEnabled] = useState(true);
+  const [digestTime, setDigestTime] = useState("08:00");
+  const [weeklyIntelEnabled, setWeeklyIntelEnabled] = useState(true);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    supabase
+      .from("notification_preferences")
+      .select("*")
+      .eq("member_id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setEmailEnabled(data.email_enabled ?? true);
+          setPushEnabled(data.push_enabled ?? false);
+          setHotAlertThreshold(data.hot_alert_threshold ?? 80);
+          setMinScoreThreshold(data.min_score_threshold ?? 50);
+          setDigestEnabled(data.digest_enabled ?? true);
+          setDigestTime(data.digest_time ?? "08:00");
+          setWeeklyIntelEnabled(data.weekly_intel_enabled ?? true);
+        }
+        setNotifLoading(false);
+      });
+  }, [session?.user?.id]);
+
+  const handleSaveNotifPrefs = async () => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    setNotifSaving(true);
+    const { error } = await supabase
+      .from("notification_preferences")
+      .upsert({
+        member_id: userId,
+        email_enabled: emailEnabled,
+        push_enabled: pushEnabled,
+        hot_alert_threshold: hotAlertThreshold,
+        min_score_threshold: minScoreThreshold,
+        digest_enabled: digestEnabled,
+        digest_time: digestTime,
+        weekly_intel_enabled: weeklyIntelEnabled,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "member_id" });
+    setNotifSaving(false);
+    if (error) {
+      toast.error("Failed to save notification preferences");
+    } else {
+      toast.success("Notification preferences saved!");
+    }
+  };
   const [logoPreview, setLogoPreview] = useState<string | null>(company?.logo_url || null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -308,6 +368,132 @@ export default function SettingsPage() {
               <Textarea value={defaultTerms} onChange={(e) => setDefaultTerms(e.target.value)} rows={6} placeholder="Enter your standard terms and conditions..." />
             </div>
           </div>
+        </div>
+
+        {/* Notification Preferences */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Bell className="h-5 w-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Notification Preferences</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-5">
+            Control how The Prospector alerts you about new federal contract matches.
+          </p>
+
+          {notifLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Channels */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-3">Notification Channels</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Email Alerts</p>
+                      <p className="text-xs text-gray-500">Hot alerts and daily digest via email</p>
+                    </div>
+                    <Switch checked={emailEnabled} onCheckedChange={setEmailEnabled} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Browser Push</p>
+                      <p className="text-xs text-gray-500">Instant pop-up for hot matches (requires permission)</p>
+                    </div>
+                    <Switch checked={pushEnabled} onCheckedChange={setPushEnabled} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-5 space-y-5">
+                {/* Hot alert threshold */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label>Hot Alert Threshold</Label>
+                    <span className="text-sm font-semibold text-red-600">{hotAlertThreshold}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Matches at or above this score trigger an immediate notification.
+                  </p>
+                  <Slider
+                    min={60}
+                    max={95}
+                    step={5}
+                    value={[hotAlertThreshold]}
+                    onValueChange={([v]) => setHotAlertThreshold(v)}
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>60%</span><span>95%</span>
+                  </div>
+                </div>
+
+                {/* Min score threshold */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label>Minimum Match Score</Label>
+                    <span className="text-sm font-semibold text-gray-700">{minScoreThreshold}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Matches below this score won't appear in your feed.
+                  </p>
+                  <Slider
+                    min={50}
+                    max={75}
+                    step={5}
+                    value={[minScoreThreshold]}
+                    onValueChange={([v]) => setMinScoreThreshold(v)}
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>50%</span><span>75%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-5 space-y-4">
+                {/* Daily digest */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Daily Digest Email</p>
+                    <p className="text-xs text-gray-500">Summary of new matches sent once a day</p>
+                  </div>
+                  <Switch checked={digestEnabled} onCheckedChange={setDigestEnabled} />
+                </div>
+                {digestEnabled && (
+                  <div className="ml-0 flex items-center gap-3">
+                    <Label className="text-sm text-gray-600 shrink-0">Delivery time</Label>
+                    <input
+                      type="time"
+                      value={digestTime}
+                      onChange={(e) => setDigestTime(e.target.value)}
+                      className="rounded-md border border-gray-200 px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                )}
+
+                {/* Weekly intel */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Weekly Intel Email</p>
+                    <p className="text-xs text-gray-500">Monday morning market summary for your trades & region</p>
+                  </div>
+                  <Switch checked={weeklyIntelEnabled} onCheckedChange={setWeeklyIntelEnabled} />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleSaveNotifPrefs}
+                  disabled={notifSaving}
+                  className="gap-2 bg-red-600 hover:bg-red-700"
+                >
+                  {notifSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {notifSaving ? "Saving..." : "Save Notification Prefs"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Save */}
