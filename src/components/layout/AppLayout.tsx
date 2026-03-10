@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
+import { useNewMatchCount } from "@/hooks/useOpportunities";
 import {
   Crosshair,
   LayoutDashboard,
@@ -13,9 +14,12 @@ import {
   Menu,
   X,
   ChevronDown,
+  Telescope,
 } from "lucide-react";
+
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/opportunities", label: "Opportunities", icon: Telescope, badge: true },
   { to: "/proposals", label: "Proposals", icon: FileText },
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/clients", label: "Clients", icon: Users },
@@ -24,8 +28,9 @@ const NAV_ITEMS = [
 ];
 
 export default function AppLayout() {
-  const { profile, company, signOut } = useSession();
+  const { profile, company, session, signOut } = useSession();
   const navigate = useNavigate();
+  const newMatchCount = useNewMatchCount(session?.user?.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -58,7 +63,12 @@ export default function AppLayout() {
             }
           >
             <item.icon className="h-5 w-5 shrink-0" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.badge && newMatchCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center text-xs font-bold px-1.5 py-0.5 rounded-full bg-red-600 text-white min-w-[18px]">
+                {newMatchCount > 99 ? "99+" : newMatchCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -14,6 +14,7 @@ import Clients from "@/pages/Clients.tsx";
 import Coaching from "@/pages/Coaching.tsx";
 import SettingsPage from "@/pages/Settings.tsx";
 import ProposalSign from "@/pages/ProposalSign.tsx";
+import Opportunities from "@/pages/Opportunities.tsx";
 
 const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ const router = createBrowserRouter([
         element: <AuthProtectedRoute />,
         children: [
           { path: "dashboard", element: <Dashboard /> },
+          { path: "opportunities", element: <Opportunities /> },
           { path: "proposals", element: <Proposals /> },
           { path: "proposals/new", element: <ProposalBuilder /> },
           { path: "proposals/:id", element: <ProposalDetail /> },
