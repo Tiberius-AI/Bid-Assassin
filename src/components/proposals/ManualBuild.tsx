@@ -8,8 +8,21 @@ import ProposalReview from "./ProposalReview";
 import { Loader2, Sparkles } from "lucide-react";
 import type { Company, AISuggestions } from "@/types";
 
+interface OpportunityPrefill {
+  projectName?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientCompany?: string;
+  projectAddress?: string;
+  solicitationNumber?: string;
+  setAside?: string;
+  sourceRef?: string;
+  deadline?: string | null;
+}
+
 interface ManualBuildProps {
   company: Company;
+  initialValues?: OpportunityPrefill;
   onSave: (data: {
     projectName: string;
     clientName: string;
@@ -23,18 +36,22 @@ interface ManualBuildProps {
   }) => Promise<void>;
 }
 
-export default function ManualBuild({ company, onSave }: ManualBuildProps) {
+export default function ManualBuild({ company, initialValues, onSave }: ManualBuildProps) {
   const [step, setStep] = useState<"form" | "review">("form");
   const [generating, setGenerating] = useState(false);
 
-  // Form state
-  const [projectName, setProjectName] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientCompany, setClientCompany] = useState("");
-  const [projectAddress, setProjectAddress] = useState("");
+  // Form state — seeded from opportunity pre-fill if present
+  const [projectName, setProjectName] = useState(initialValues?.projectName ?? "");
+  const [clientName, setClientName] = useState(initialValues?.clientName ?? "");
+  const [clientEmail, setClientEmail] = useState(initialValues?.clientEmail ?? "");
+  const [clientCompany, setClientCompany] = useState(initialValues?.clientCompany ?? "");
+  const [projectAddress, setProjectAddress] = useState(initialValues?.projectAddress ?? "");
   const [tradeType, setTradeType] = useState(company.trades[0] || "");
-  const [scopeNotes, setScopeNotes] = useState("");
+  const [scopeNotes, setScopeNotes] = useState(
+    initialValues?.solicitationNumber
+      ? `Solicitation: ${initialValues.solicitationNumber}\n${initialValues.setAside ? `Set-Aside: ${initialValues.setAside}\n` : ""}${initialValues.sourceRef ? `Source: ${initialValues.sourceRef}\n` : ""}${initialValues.deadline ? `Response Deadline: ${new Date(initialValues.deadline).toLocaleDateString()}\n` : ""}\n`
+      : ""
+  );
   const [paymentTerms, setPaymentTerms] = useState(company.default_payment_terms);
   const [warrantyTerms, setWarrantyTerms] = useState(company.default_warranty_terms);
 
@@ -101,6 +118,13 @@ export default function ManualBuild({ company, onSave }: ManualBuildProps) {
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+      {initialValues?.sourceRef && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-center gap-2">
+          <span className="font-semibold">Federal Opportunity Pre-filled</span>
+          <span className="text-red-600">&mdash;</span>
+          <span className="text-red-700">{initialValues.sourceRef}</span>
+        </div>
+      )}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 space-y-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Project Details</h2>

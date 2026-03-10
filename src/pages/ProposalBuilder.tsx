@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import { useProposals } from "@/hooks/useProposals";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import supabase from "@/supabase";
 import ManualBuild from "@/components/proposals/ManualBuild";
@@ -9,12 +9,33 @@ import AgentBuild from "@/components/proposals/AgentBuild";
 import { PenLine, Bot } from "lucide-react";
 import type { AISuggestions, ChatMessage, ClientResearch } from "@/types";
 
+interface OpportunityRouteState {
+  fromOpportunity?: {
+    matchId: string;
+    opportunityId: string;
+    projectName: string;
+    clientName: string;
+    clientEmail: string;
+    clientPhone: string;
+    clientContactName: string;
+    projectAddress: string;
+    solicitationNumber: string;
+    setAside: string;
+    sourceRef: string;
+    deadline: string | null;
+  };
+}
+
 export default function ProposalBuilder() {
   const { id } = useParams();
   const { company } = useSession();
   const { createProposal, updateProposal } = useProposals(company?.id);
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"manual" | "agent">("agent");
+  const location = useLocation();
+
+  const fromOpportunity = (location.state as OpportunityRouteState | null)?.fromOpportunity;
+
+  const [mode, setMode] = useState<"manual" | "agent">(fromOpportunity ? "manual" : "agent");
 
   const handleSave = async (data: {
     projectName: string;
@@ -97,6 +118,14 @@ export default function ProposalBuilder() {
           });
         }
 
+        // Link back to the opportunity match if this came from The Prospector
+        if (fromOpportunity?.matchId) {
+          await supabase
+            .from("opportunity_matches")
+            .update({ proposal_id: newProposal.id, status: "proposal_started" })
+            .eq("id", fromOpportunity.matchId);
+        }
+
         toast.success("Proposal created!");
         navigate(`/proposals/${newProposal.id}`);
       }
@@ -121,7 +150,7 @@ export default function ProposalBuilder() {
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-xl font-bold text-gray-900 mb-4">
-              New Proposal
+              {fromOpportunity ? "Build Proposal from Opportunity" : "New Proposal"}
             </h1>
             <div className="grid grid-cols-2 gap-4">
               <button
@@ -181,7 +210,21 @@ export default function ProposalBuilder() {
       {/* Build Mode Content */}
       <div className="flex-1 overflow-hidden">
         {mode === "manual" ? (
-          <ManualBuild company={company} onSave={handleSave} />
+          <ManualBuild
+            company={company}
+            onSave={handleSave}
+            initialValues={fromOpportunity ? {
+              projectName: fromOpportunity.projectName,
+              clientName: fromOpportunity.clientContactName,
+              clientEmail: fromOpportunity.clientEmail,
+              clientCompany: fromOpportunity.clientName,
+              projectAddress: fromOpportunity.projectAddress,
+              solicitationNumber: fromOpportunity.solicitationNumber,
+              setAside: fromOpportunity.setAside,
+              sourceRef: fromOpportunity.sourceRef,
+              deadline: fromOpportunity.deadline,
+            } : undefined}
+          />
         ) : (
           <AgentBuild company={company} onSave={handleSave} />
         )}
