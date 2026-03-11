@@ -108,12 +108,15 @@ export function useOpportunities(companyId: string | undefined) {
     setError(null);
 
     try {
-      const { error: fnErr } = await supabase.functions.invoke("generate-opportunities", {
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke("generate-opportunities", {
         body: { company_id: companyId, force_refresh: forceRefresh },
       });
 
       if (fnErr) {
-        setError(fnErr.message || "Failed to generate opportunities");
+        // Try to extract the real error message from the response body
+        const detail = fnData?.error || fnErr.message || "Failed to generate opportunities";
+        setError(detail);
+        console.error("generate-opportunities error:", detail, fnErr);
       } else {
         await loadOpportunities();
         await loadSettings();
