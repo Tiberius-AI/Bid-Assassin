@@ -11,7 +11,7 @@ import { useWebPush } from "@/hooks/useWebPush";
 import { Button } from "@/components/ui/button";
 import {
   Select,
-  SelectContent,h
+  SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
