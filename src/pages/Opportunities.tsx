@@ -1,6 +1,5 @@
 /**
- * Opportunities — The Prospector (Phase 1: static UI with mock data)
- * Phase 2 will swap MOCK_OPPORTUNITIES for live Supabase + Google API calls.
+ * Opportunities — The Prospector (Phase 2: live Google Places + LinkedIn data)
  */
 import { useState, useMemo } from "react";
 import { useSession } from "@/context/SessionContext";
@@ -8,50 +7,17 @@ import {
   Building2, User, Star, Phone, Globe, MapPin,
   Bookmark, X, MessageSquare, Mail, Smartphone,
   Copy, Check, ExternalLink, Lock, Zap,
-  SlidersHorizontal, ChevronRight,
+  SlidersHorizontal, ChevronRight, RefreshCw, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { useOpportunities, type DbOpportunity, type OppStatus } from "@/hooks/useOpportunities";
 
 // ─────────────────────────────────────────────────────────────
-// Types
+// Constants
 // ─────────────────────────────────────────────────────────────
 
-type CardType = "company" | "person";
-type OppStatus =
-  | "new" | "saved" | "dismissed" | "reached_out"
-  | "responded" | "proposal_sent" | "won" | "lost";
 type OutreachChannel = "email" | "sms" | "phone" | "linkedin";
-
-interface Opportunity {
-  id: string;
-  card_type: CardType;
-  // Company fields
-  business_name?: string;
-  business_type?: string;
-  business_category?: string;
-  address?: string;
-  distance_miles?: number;
-  phone?: string;
-  website?: string;
-  google_rating?: number;
-  google_reviews?: number;
-  // Person fields
-  person_name?: string;
-  person_title?: string;
-  person_company?: string;
-  linkedin_url?: string;
-  person_location?: string;
-  // Shared
-  match_score: number;
-  match_reason: string;
-  status: OppStatus;
-  is_new: boolean;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Rotation strip data
-// ─────────────────────────────────────────────────────────────
 
 const ROTATION = [
   { day: "Mon", company: "General Contractors",      people: "Construction PMs" },
@@ -62,150 +28,8 @@ const ROTATION = [
   { day: "Sat", company: "Facility Maintenance",     people: "Estimators" },
   { day: "Sun", company: "HOA & Auto Dealers",       people: "VP Construction" },
 ];
-// Mon=0 … Sun=6 (aligned to ROTATION array)
-const DOW = new Date().getDay(); // 0=Sun … 6=Sat
+const DOW = new Date().getDay();
 const TODAY_IDX = DOW === 0 ? 6 : DOW - 1;
-
-// ─────────────────────────────────────────────────────────────
-// Mock data  (San Antonio / Central Texas, electrical trade)
-// ─────────────────────────────────────────────────────────────
-
-const MOCK: Opportunity[] = [
-  // ── Company cards ──────────────────────────────────────────
-  {
-    id: "c1", card_type: "company",
-    business_name: "Guido Construction Co.",
-    business_type: "General Contractor", business_category: "General Contractors",
-    address: "8800 Village Dr, San Antonio, TX", distance_miles: 8.2,
-    phone: "(210) 824-7700", website: "guidoconstruction.com",
-    google_rating: 4.3, google_reviews: 47,
-    match_score: 94,
-    match_reason: "Active GC within 10mi — high demand for electrical subs on commercial builds",
-    status: "new", is_new: true,
-  },
-  {
-    id: "c2", card_type: "company",
-    business_name: "Kopplow Construction",
-    business_type: "General Contractor", business_category: "General Contractors",
-    address: "430 Loop 337, New Braunfels, TX", distance_miles: 22.4,
-    phone: "(830) 620-5600", website: "kopplowconstruction.com",
-    google_rating: 4.7, google_reviews: 63,
-    match_score: 88,
-    match_reason: "Regional GC with strong commercial portfolio — hires electrical subs regularly",
-    status: "saved", is_new: false,
-  },
-  {
-    id: "c3", card_type: "company",
-    business_name: "JMJ Property Management",
-    business_type: "Property Management", business_category: "Property Management",
-    address: "12707 Silicon Dr, San Antonio, TX", distance_miles: 3.1,
-    phone: "(210) 545-9595", website: "jmjproperty.com",
-    google_rating: 4.1, google_reviews: 28,
-    match_score: 81,
-    match_reason: "Manages 40+ commercial properties — ongoing electrical maintenance contracts",
-    status: "new", is_new: true,
-  },
-  {
-    id: "c4", card_type: "company",
-    business_name: "Zachry Construction",
-    business_type: "Commercial Developer", business_category: "Commercial Developers",
-    address: "527 Logwood Ave, San Antonio, TX", distance_miles: 12.7,
-    phone: "(210) 588-5000", website: "zachryconstruction.com",
-    google_rating: 4.5, google_reviews: 112,
-    match_score: 91,
-    match_reason: "Major commercial builder — active projects in medical and industrial sectors",
-    status: "reached_out", is_new: false,
-  },
-  {
-    id: "c5", card_type: "company",
-    business_name: "North East ISD Facilities",
-    business_type: "School District", business_category: "Schools & Institutions",
-    address: "8961 Tesoro Dr, San Antonio, TX", distance_miles: 11.3,
-    phone: "(210) 407-0000", website: "neisd.net",
-    google_rating: 3.9, google_reviews: 18,
-    match_score: 77,
-    match_reason: "ISD with active capital improvement program — bids electrical work annually",
-    status: "new", is_new: true,
-  },
-  {
-    id: "c6", card_type: "company",
-    business_name: "Marriott Rivercenter",
-    business_type: "Hotel", business_category: "Hotels & Hospitality",
-    address: "101 Bowie St, San Antonio, TX", distance_miles: 4.8,
-    phone: "(210) 223-1000", website: "marriott.com",
-    google_rating: 4.4, google_reviews: 2841,
-    match_score: 72,
-    match_reason: "Large hotel with regular facility upgrades — uses local electrical contractors",
-    status: "new", is_new: true,
-  },
-  {
-    id: "c7", card_type: "company",
-    business_name: "Embrey Partners",
-    business_type: "Multifamily Developer", business_category: "Commercial Developers",
-    address: "2100 Raven Hill, San Antonio, TX", distance_miles: 6.9,
-    phone: "(210) 737-2000", website: "embreypartners.com",
-    google_rating: 4.2, google_reviews: 34,
-    match_score: 86,
-    match_reason: "Active multifamily developer — regularly bids out electrical to local subs",
-    status: "new", is_new: false,
-  },
-
-  // ── Person cards ───────────────────────────────────────────
-  {
-    id: "p1", card_type: "person",
-    person_name: "Maria Rodriguez", person_title: "Construction Project Manager",
-    person_company: "DPR Construction",
-    linkedin_url: "https://www.linkedin.com/in/",
-    person_location: "San Antonio, TX",
-    match_score: 89,
-    match_reason: "PM at DPR managing $40M+ commercial builds — actively sourcing electrical subs",
-    status: "new", is_new: true,
-  },
-  {
-    id: "p2", card_type: "person",
-    person_name: "James Wilson", person_title: "Director of Facilities",
-    person_company: "USAA",
-    linkedin_url: "https://www.linkedin.com/in/",
-    person_location: "San Antonio, TX",
-    match_score: 83,
-    match_reason: "Facilities director overseeing 5 campuses — controls electrical maintenance vendors",
-    status: "new", is_new: true,
-  },
-  {
-    id: "p3", card_type: "person",
-    person_name: "David Martinez", person_title: "Commercial Superintendent",
-    person_company: "Manhattan Construction",
-    linkedin_url: "https://www.linkedin.com/in/",
-    person_location: "San Antonio, TX",
-    match_score: 91,
-    match_reason: "Superintendent on 3 active SA commercial projects — direct sub contact",
-    status: "new", is_new: true,
-  },
-  {
-    id: "p4", card_type: "person",
-    person_name: "Sarah Chen", person_title: "VP of Construction",
-    person_company: "GrayStreet Partners",
-    linkedin_url: "https://www.linkedin.com/in/",
-    person_location: "San Antonio, TX",
-    match_score: 76,
-    match_reason: "Decision maker at active developer — oversees sub selection on all projects",
-    status: "new", is_new: false,
-  },
-  {
-    id: "p5", card_type: "person",
-    person_name: "Robert Taylor", person_title: "Chief Estimator",
-    person_company: "Bartlett Cocke General Contractors",
-    linkedin_url: "https://www.linkedin.com/in/",
-    person_location: "San Antonio, TX",
-    match_score: 87,
-    match_reason: "Estimator at top SA GC — manages sub invitations for bid on all projects",
-    status: "new", is_new: true,
-  },
-];
-
-// ─────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────
 
 const ALL_TRADES = [
   "Electrical", "Plumbing", "HVAC", "Mechanical", "Roofing", "Drywall",
@@ -241,7 +65,7 @@ function scoreColor(score: number) {
 
 function buildTemplate(
   channel: OutreachChannel,
-  target: Opportunity,
+  target: DbOpportunity,
   userName: string,
   companyName: string,
   trade: string,
@@ -284,55 +108,60 @@ function buildTemplate(
 export default function Opportunities() {
   const { profile, company } = useSession();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const co = company as any;
   const userName    = profile?.full_name || "Your Name";
-  const companyName = co?.name || "Your Company";
-  const city        = co?.city || co?.address?.split(",")[1]?.trim() || "San Antonio";
+  const companyName = company?.name       || "Your Company";
+  const city        = company?.city       || company?.state || "your area";
+
+  const {
+    opportunities,
+    settings,
+    loading,
+    generating,
+    error,
+    generate,
+    saveSettings,
+    updateStatus,
+  } = useOpportunities(company?.id);
 
   // UI state
-  const [view,          setView]          = useState<"feed" | "pipeline">("feed");
-  const [activeFilter,  setActiveFilter]  = useState("all");
-  const [settingsOpen,  setSettingsOpen]  = useState(false);
-  const [outreachTarget, setOutreachTarget] = useState<Opportunity | null>(null);
+  const [view,           setView]           = useState<"feed" | "pipeline">("feed");
+  const [activeFilter,   setActiveFilter]   = useState("all");
+  const [settingsOpen,   setSettingsOpen]   = useState(false);
+  const [outreachTarget, setOutreachTarget] = useState<DbOpportunity | null>(null);
   const [outreachChannel, setOutreachChannel] = useState<OutreachChannel>("email");
-  const [copiedId,      setCopiedId]      = useState<string | null>(null);
+  const [copiedId,       setCopiedId]       = useState<string | null>(null);
 
-  // Persisted-to-Supabase in Phase 2, local in Phase 1
-  const [statuses,       setStatuses]      = useState<Record<string, OppStatus>>({});
-  const [radius,         setRadius]        = useState(50);
-  const [selectedTrades, setSelectedTrades] = useState<string[]>(["Electrical"]);
+  // Local settings state (synced from DB via hook)
+  const [localRadius, setLocalRadius]   = useState(50);
+  const [localTrades, setLocalTrades]   = useState<string[]>([]);
+  const settingsLoaded                  = settings !== null;
 
-  const primaryTrade = selectedTrades[0] || "Electrical";
+  // Sync from DB settings once loaded
+  if (settingsLoaded && localTrades.length === 0 && settings.trades.length > 0) {
+    setLocalTrades(settings.trades);
+    setLocalRadius(settings.radius_miles);
+  }
 
-  // Merge local status overrides with mock seed
-  const opps = useMemo(
-    () => MOCK.map((o) => ({ ...o, status: statuses[o.id] ?? o.status })),
-    [statuses],
-  );
-
-  const updateStatus = (id: string, s: OppStatus) =>
-    setStatuses((prev) => ({ ...prev, [id]: s }));
+  const primaryTrade = localTrades[0] || company?.trades?.[0] || "General";
 
   // Derived counts
-  const visible      = opps.filter((o) => o.status !== "dismissed");
+  const visible      = opportunities;
   const newCount     = visible.filter((o) => o.status === "new").length;
-  const savedCount   = opps.filter((o) => o.status === "saved").length;
+  const savedCount   = visible.filter((o) => o.status === "saved").length;
   const companyCount = visible.filter((o) => o.card_type === "company").length;
   const personCount  = visible.filter((o) => o.card_type === "person").length;
 
   const feedItems = useMemo(() => {
-    const items = opps.filter((o) => o.status !== "dismissed");
-    if (activeFilter === "saved")     return items.filter((o) => o.status === "saved");
-    if (activeFilter === "companies") return items.filter((o) => o.card_type === "company");
-    if (activeFilter === "people")    return items.filter((o) => o.card_type === "person");
-    return items;
-  }, [opps, activeFilter]);
+    if (activeFilter === "saved")     return visible.filter((o) => o.status === "saved");
+    if (activeFilter === "companies") return visible.filter((o) => o.card_type === "company");
+    if (activeFilter === "people")    return visible.filter((o) => o.card_type === "person");
+    return visible;
+  }, [visible, activeFilter]);
 
-  const pipelineItems = opps.filter((o) => PIPELINE_STAGES.includes(o.status));
+  const pipelineItems = opportunities.filter((o) => PIPELINE_STAGES.includes(o.status));
 
-  const won     = opps.filter((o) => o.status === "won").length;
-  const decided = opps.filter((o) => o.status === "won" || o.status === "lost").length;
+  const won     = opportunities.filter((o) => o.status === "won").length;
+  const decided = opportunities.filter((o) => o.status === "won" || o.status === "lost").length;
   const winRate = decided > 0 ? Math.round((won / decided) * 100) : 0;
 
   const handleCopy = (text: string, id: string) => {
@@ -341,14 +170,55 @@ export default function Opportunities() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const openOutreach = (opp: Opportunity, channel: OutreachChannel = "email") => {
+  const openOutreach = (opp: DbOpportunity, channel?: OutreachChannel) => {
     setOutreachTarget(opp);
-    setOutreachChannel(channel);
+    setOutreachChannel(channel ?? (opp.card_type === "person" ? "linkedin" : "email"));
+  };
+
+  const handleSaveSettings = async () => {
+    await saveSettings({ trades: localTrades, radius_miles: localRadius });
+    setSettingsOpen(false);
+    generate(true); // regenerate with new settings
   };
 
   const template = outreachTarget
     ? buildTemplate(outreachChannel, outreachTarget, userName, companyName, primaryTrade, city)
     : null;
+
+  // ── Loading / generating state ─────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-6 h-6 text-red-600 animate-spin" />
+        <p className="text-sm text-gray-500">Loading your opportunities…</p>
+      </div>
+    );
+  }
+
+  if (generating && opportunities.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
+        <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+        <p className="text-base font-semibold text-gray-900">Finding leads near {city}…</p>
+        <p className="text-sm text-gray-500">Searching Google Places + LinkedIn. This takes about 10–15 seconds.</p>
+      </div>
+    );
+  }
+
+  if (error && opportunities.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+          <X className="w-6 h-6 text-red-600" />
+        </div>
+        <p className="text-base font-semibold text-gray-900">Couldn't load opportunities</p>
+        <p className="text-sm text-gray-500 max-w-sm">{error}</p>
+        <Button onClick={() => generate(true)} className="bg-red-600 hover:bg-red-700 mt-2">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   // ── Render ─────────────────────────────────────────────────
   return (
@@ -367,9 +237,12 @@ export default function Opportunities() {
                   {newCount} new today
                 </span>
               )}
+              {generating && (
+                <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+              )}
             </div>
             <p className="text-sm text-gray-500 mt-0.5">
-              Fresh leads within {radius} miles of your service area
+              Fresh leads within {localRadius} miles of {city}
             </p>
           </div>
 
@@ -391,6 +264,17 @@ export default function Opportunities() {
               ))}
             </div>
 
+            {/* Refresh */}
+            <button
+              onClick={() => generate(true)}
+              disabled={generating}
+              title="Refresh today's leads"
+              className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${generating ? "animate-spin" : ""}`} />
+            </button>
+
+            {/* Settings */}
             <button
               onClick={() => setSettingsOpen(!settingsOpen)}
               className={`p-2 rounded-lg border transition-colors ${
@@ -459,11 +343,11 @@ export default function Opportunities() {
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="text-sm font-medium text-gray-700">Service Radius</label>
-              <span className="text-sm font-bold text-red-600">{radius} miles</span>
+              <span className="text-sm font-bold text-red-600">{localRadius} miles</span>
             </div>
             <Slider
-              value={[radius]} min={10} max={150} step={5}
-              onValueChange={([v]) => setRadius(v)}
+              value={[localRadius]} min={10} max={150} step={5}
+              onValueChange={([v]) => setLocalRadius(v)}
               className="max-w-sm"
             />
           </div>
@@ -476,12 +360,12 @@ export default function Opportunities() {
                 <button
                   key={t}
                   onClick={() =>
-                    setSelectedTrades((prev) =>
+                    setLocalTrades((prev) =>
                       prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
                     )
                   }
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    selectedTrades.includes(t)
+                    localTrades.includes(t)
                       ? "bg-red-600 text-white border-red-600"
                       : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                   }`}
@@ -525,6 +409,13 @@ export default function Opportunities() {
               ))}
             </div>
           </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSaveSettings} className="bg-red-600 hover:bg-red-700" disabled={generating}>
+              {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Refreshing…</> : "Save & Refresh Feed"}
+            </Button>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+          </div>
         </div>
       )}
 
@@ -534,10 +425,20 @@ export default function Opportunities() {
         {/* FEED VIEW */}
         {view === "feed" && (
           <div className="max-w-2xl space-y-3">
-            {feedItems.length === 0 && (
+            {generating && opportunities.length > 0 && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin flex-shrink-0" />
+                Finding fresh leads…
+              </div>
+            )}
+            {feedItems.length === 0 && !generating && (
               <div className="text-center py-16 text-gray-400">
                 <p className="font-medium">No opportunities in this filter</p>
-                <p className="text-sm mt-1">Try switching to "All"</p>
+                <p className="text-sm mt-1">
+                  {activeFilter !== "all"
+                    ? 'Try switching to "All"'
+                    : "Click the refresh button to search for leads"}
+                </p>
               </div>
             )}
             {feedItems.map((opp) => (
@@ -548,9 +449,7 @@ export default function Opportunities() {
                   updateStatus(opp.id, opp.status === "saved" ? "new" : "saved")
                 }
                 onSkip={() => updateStatus(opp.id, "dismissed")}
-                onReachOut={(ch) =>
-                  openOutreach(opp, ch ?? (opp.card_type === "person" ? "linkedin" : "email"))
-                }
+                onReachOut={(ch) => openOutreach(opp, ch)}
               />
             ))}
           </div>
@@ -631,10 +530,10 @@ export default function Opportunities() {
         <div className="max-w-2xl mt-8 border-t border-gray-100 pt-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: "This Week",       value: opps.length },
-              { label: "Saved",           value: savedCount },
-              { label: "Proposals Sent",  value: pipelineItems.filter((o) => o.status === "proposal_sent").length },
-              { label: "Win Rate",        value: winRate > 0 ? `${winRate}%` : "—" },
+              { label: "Today",          value: opportunities.length },
+              { label: "Saved",          value: savedCount },
+              { label: "Proposals Sent", value: pipelineItems.filter((o) => o.status === "proposal_sent").length },
+              { label: "Win Rate",       value: winRate > 0 ? `${winRate}%` : "—" },
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-2xl font-bold text-gray-900 font-mono">{s.value}</p>
@@ -653,7 +552,6 @@ export default function Opportunities() {
             onClick={() => setOutreachTarget(null)}
           />
           <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-y-auto">
-            {/* Drawer header */}
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500">Reaching out to</p>
@@ -675,11 +573,8 @@ export default function Opportunities() {
               {/* Channel tabs */}
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                 {(["email", "sms", "phone", "linkedin"] as OutreachChannel[]).map((ch) => {
-                  // Hide LinkedIn tab for company cards (no profile URL)
                   if (ch === "linkedin" && outreachTarget.card_type === "company") return null;
-                  const Icon = {
-                    email: Mail, sms: Smartphone, phone: Phone, linkedin: ExternalLink,
-                  }[ch];
+                  const Icon = { email: Mail, sms: Smartphone, phone: Phone, linkedin: ExternalLink }[ch];
                   return (
                     <button
                       key={ch}
@@ -697,12 +592,10 @@ export default function Opportunities() {
                 })}
               </div>
 
-              {/* Subject (email only) */}
+              {/* Subject */}
               {outreachChannel === "email" && template.subject && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Subject
-                  </label>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</label>
                   <p className="text-sm text-gray-900 mt-1 font-medium">{template.subject}</p>
                 </div>
               )}
@@ -720,14 +613,11 @@ export default function Opportunities() {
               {/* Action buttons */}
               <div className="flex gap-2 pb-2">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
+                  variant="outline" size="sm" className="flex-1"
                   onClick={() =>
                     handleCopy(
                       (outreachChannel === "email" && template.subject
-                        ? `Subject: ${template.subject}\n\n`
-                        : "") + template.body,
+                        ? `Subject: ${template.subject}\n\n` : "") + template.body,
                       outreachTarget.id,
                     )
                   }
@@ -738,57 +628,40 @@ export default function Opportunities() {
                 </Button>
 
                 {outreachChannel === "email" && (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  <Button size="sm" className="flex-1 bg-red-600 hover:bg-red-700"
                     onClick={() => {
-                      window.open(
-                        `mailto:?subject=${encodeURIComponent(template.subject ?? "")}&body=${encodeURIComponent(template.body)}`,
-                      );
+                      window.open(`mailto:?subject=${encodeURIComponent(template.subject ?? "")}&body=${encodeURIComponent(template.body)}`);
                       updateStatus(outreachTarget.id, "reached_out");
                       setOutreachTarget(null);
-                    }}
-                  >
+                    }}>
                     Open Email App <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                   </Button>
                 )}
                 {outreachChannel === "sms" && (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  <Button size="sm" className="flex-1 bg-red-600 hover:bg-red-700"
                     onClick={() => {
                       window.open(`sms:?body=${encodeURIComponent(template.body)}`);
                       updateStatus(outreachTarget.id, "reached_out");
                       setOutreachTarget(null);
-                    }}
-                  >
+                    }}>
                     Open Messages <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                   </Button>
                 )}
                 {outreachChannel === "phone" && outreachTarget.phone && (
-                  <a
-                    href={`tel:${outreachTarget.phone}`}
-                    className="flex-1"
-                    onClick={() => {
-                      updateStatus(outreachTarget.id, "reached_out");
-                      setOutreachTarget(null);
-                    }}
-                  >
+                  <a href={`tel:${outreachTarget.phone}`} className="flex-1"
+                    onClick={() => { updateStatus(outreachTarget.id, "reached_out"); setOutreachTarget(null); }}>
                     <Button size="sm" className="w-full bg-red-600 hover:bg-red-700">
                       Call {outreachTarget.phone} <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                     </Button>
                   </a>
                 )}
                 {outreachChannel === "linkedin" && outreachTarget.linkedin_url && (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-[#0A66C2] hover:bg-[#004182]"
+                  <Button size="sm" className="flex-1 bg-[#0A66C2] hover:bg-[#004182]"
                     onClick={() => {
-                      window.open(outreachTarget.linkedin_url, "_blank");
+                      window.open(outreachTarget.linkedin_url!, "_blank");
                       updateStatus(outreachTarget.id, "reached_out");
                       setOutreachTarget(null);
-                    }}
-                  >
+                    }}>
                     Open LinkedIn <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                   </Button>
                 )}
@@ -802,7 +675,7 @@ export default function Opportunities() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Opportunity card (company + person variants)
+// Opportunity card
 // ─────────────────────────────────────────────────────────────
 
 function OppCard({
@@ -811,7 +684,7 @@ function OppCard({
   onSkip,
   onReachOut,
 }: {
-  opp: Opportunity;
+  opp: DbOpportunity;
   onSave: () => void;
   onSkip: () => void;
   onReachOut: (channel?: OutreachChannel) => void;
@@ -820,13 +693,10 @@ function OppCard({
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
-      {/* Header row */}
       <div className="flex items-start gap-3">
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-            opp.card_type === "company" ? "bg-blue-50" : "bg-purple-50"
-          }`}
-        >
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          opp.card_type === "company" ? "bg-blue-50" : "bg-purple-50"
+        }`}>
           {opp.card_type === "company"
             ? <Building2 className="h-5 w-5 text-blue-600" />
             : <User className="h-5 w-5 text-purple-600" />}
@@ -849,27 +719,24 @@ function OppCard({
             </span>
           </div>
 
-          {/* Subtitle */}
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {opp.card_type === "company" ? (
               <>
                 <span className="text-xs text-gray-500">{opp.business_type}</span>
+                {opp.distance_miles && (
+                  <><span className="text-gray-300">·</span><span className="text-xs text-gray-500">{opp.distance_miles}mi</span></>
+                )}
                 <span className="text-gray-300">·</span>
-                <span className="text-xs text-gray-500">{opp.distance_miles}mi</span>
-                <span className="text-gray-300">·</span>
-                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                  Google
-                </span>
+                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Google</span>
               </>
             ) : (
               <>
                 <span className="text-xs text-gray-500">{opp.person_title}</span>
+                {opp.person_company && (
+                  <><span className="text-gray-300">·</span><span className="text-xs text-gray-500">{opp.person_company}</span></>
+                )}
                 <span className="text-gray-300">·</span>
-                <span className="text-xs text-gray-500">{opp.person_company}</span>
-                <span className="text-gray-300">·</span>
-                <span className="text-[10px] font-semibold text-[#0A66C2] bg-blue-50 px-1.5 py-0.5 rounded">
-                  LinkedIn
-                </span>
+                <span className="text-[10px] font-semibold text-[#0A66C2] bg-blue-50 px-1.5 py-0.5 rounded">LinkedIn</span>
               </>
             )}
           </div>
@@ -879,7 +746,7 @@ function OppCard({
       {/* Company details */}
       {opp.card_type === "company" && (
         <div className="mt-3 space-y-1.5">
-          {opp.google_rating !== undefined && (
+          {opp.google_rating !== null && opp.google_rating !== undefined && (
             <div className="flex items-center gap-1.5">
               <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
               <span className="text-xs text-gray-600">
@@ -895,21 +762,16 @@ function OppCard({
           )}
           <div className="flex items-center gap-3 flex-wrap">
             {opp.phone && (
-              <a
-                href={`tel:${opp.phone}`}
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 transition-colors"
-              >
+              <a href={`tel:${opp.phone}`}
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 transition-colors">
                 <Phone className="h-3.5 w-3.5" /> {opp.phone}
               </a>
             )}
             {opp.website && (
-              <a
-                href={`https://${opp.website}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 transition-colors"
-              >
-                <Globe className="h-3.5 w-3.5" /> {opp.website}
+              <a href={opp.website.startsWith("http") ? opp.website : `https://${opp.website}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 transition-colors">
+                <Globe className="h-3.5 w-3.5" /> {opp.website.replace(/^https?:\/\//, "").split("/")[0]}
               </a>
             )}
           </div>
@@ -926,12 +788,8 @@ function OppCard({
             </div>
           )}
           {opp.linkedin_url && (
-            <a
-              href={opp.linkedin_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-[#0A66C2] hover:underline"
-            >
+            <a href={opp.linkedin_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-[#0A66C2] hover:underline">
               <ExternalLink className="h-3.5 w-3.5" /> View on LinkedIn
             </a>
           )}
@@ -939,33 +797,30 @@ function OppCard({
       )}
 
       {/* Match reason */}
-      <div className="mt-3 bg-gray-50 rounded-lg px-3 py-2">
-        <p className="text-xs text-gray-600 italic">{opp.match_reason}</p>
-      </div>
+      {opp.match_reason && (
+        <div className="mt-3 bg-gray-50 rounded-lg px-3 py-2">
+          <p className="text-xs text-gray-600 italic">{opp.match_reason}</p>
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="mt-3 flex gap-2">
-        <button
-          onClick={onSkip}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={onSkip}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
           <X className="h-3.5 w-3.5" /> Skip
         </button>
-        <button
-          onClick={onSave}
+        <button onClick={onSave}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
             isSaved
               ? "border-yellow-300 bg-yellow-50 text-yellow-700"
               : "border-gray-200 text-gray-600 hover:bg-gray-50"
-          }`}
-        >
+          }`}>
           <Bookmark className={`h-3.5 w-3.5 ${isSaved ? "fill-yellow-400 text-yellow-400" : ""}`} />
           {isSaved ? "Saved" : "Save"}
         </button>
         <button
           onClick={() => onReachOut()}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
           <MessageSquare className="h-3.5 w-3.5" /> Reach Out
         </button>
       </div>

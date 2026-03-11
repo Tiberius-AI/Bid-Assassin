@@ -1,218 +1,232 @@
 import { useState, useEffect, useCallback } from "react";
 import supabase from "@/supabase";
 
-const PAGE_SIZE = 20;
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 
-export interface OpportunityMatch {
+export type OppStatus =
+  | "new" | "saved" | "dismissed" | "reached_out"
+  | "responded" | "proposal_sent" | "won" | "lost";
+
+export interface DbOpportunity {
   id: string;
-  fit_score: number;
-  score_breakdown: {
-    trade: number;
-    location: number;
-    certification: number;
-    freshness: number;
-    engagement: number;
-  };
-  status: string;
-  viewed_at: string | null;
-  opportunity: {
-    id: string;
-    title: string;
-    solicitation_number: string | null;
-    department: string | null;
-    sub_tier: string | null;
-    office: string | null;
-    posted_date: string | null;
-    response_deadline: string | null;
-    naics_code: string | null;
-    set_aside_type: string | null;
-    set_aside_description: string | null;
-    place_of_performance: {
-      city?: string | null;
-      state?: string | null;
-      zip?: string | null;
-      street_address?: string | null;
-    } | null;
-    contacts: Array<{
-      type?: string;
-      fullName?: string;
-      email?: string;
-      phone?: string;
-      title?: string;
-    }> | null;
-    notice_type: string | null;
-    source_id: string;
-  };
+  card_type: "company" | "person";
+  source: string;
+  source_id: string | null;
+  status: OppStatus;
+  match_score: number;
+  match_reason: string | null;
+  is_new: boolean;
+  shown_date: string;
+  // Company
+  business_name:     string | null;
+  business_type:     string | null;
+  business_category: string | null;
+  address:           string | null;
+  distance_miles:    number | null;
+  phone:             string | null;
+  website:           string | null;
+  google_rating:     number | null;
+  google_reviews:    number | null;
+  // Person
+  person_name:     string | null;
+  person_title:    string | null;
+  person_company:  string | null;
+  linkedin_url:    string | null;
+  person_location: string | null;
 }
 
-export interface OpportunityFilters {
-  minScore: number;
-  status: string;       // "all" | "new" | "viewed" | "interested" | "passed"
-  state: string;        // "all" | state code
-  setAside: string;     // "all" | set-aside code
-  deadline: string;     // "all" | "week" | "two_weeks" | "month"
-  sortBy: string;       // "fit_score" | "deadline" | "posted_date"
+export interface OpportunitySettings {
+  trades:       string[];
+  radius_miles: number;
+  center_lat:   number | null;
+  center_lng:   number | null;
+  rotation_index: number;
 }
 
-export const DEFAULT_FILTERS: OpportunityFilters = {
-  minScore: 50,
-  status: "all",
-  state: "all",
-  setAside: "all",
-  deadline: "all",
-  sortBy: "fit_score",
-};
+// ─────────────────────────────────────────────────────────────
+// Main hook
+// ─────────────────────────────────────────────────────────────
 
-export function useOpportunities(userId: string | undefined, filters: OpportunityFilters) {
-  const [matches, setMatches] = useState<OpportunityMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  const [page, setPage] = useState(0);
+export function useOpportunities(companyId: string | undefined) {
+  const [opportunities, setOpportunities] = useState<DbOpportunity[]>([]);
+  const [settings, setSettings]           = useState<OpportunitySettings | null>(null);
+  const [loading, setLoading]             = useState(true);
+  const [generating, setGenerating]       = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
 
-  const fetchMatches = useCallback(
-    async (pageIndex: number, replace: boolean) => {
-      if (!userId) return;
-      setLoading(true);
+  const today = new Date().toISOString().split("T")[0];
 
-      let query = supabase
-        .from("opportunity_matches")
-        .select(
-          `id, fit_score, score_breakdown, status, viewed_at,
-           opportunity:opportunities (
-             id, title, solicitation_number, department, sub_tier, office,
-             posted_date, response_deadline, naics_code, set_aside_type,
-             set_aside_description, place_of_performance, contacts,
-             notice_type, source_id
-           )`
-        )
-        .eq("member_id", userId)
-        .gte("fit_score", filters.minScore);
+  // ── Load today's opportunities from DB ────────────────────
+  const loadOpportunities = useCallback(async () => {
+    if (!companyId) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
 
-      // Status filter — default view hides passed
-      if (filters.status === "all") {
-        query = query.neq("status", "passed");
-      } else {
-        query = query.eq("status", filters.status);
-      }
+    const { data, error: err } = await supabase
+      .from("opportunities")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("shown_date", today)
+      .neq("status", "dismissed")
+      .order("match_score", { ascending: false });
 
-      // Sort
-      if (filters.sortBy === "fit_score") {
-        query = query.order("fit_score", { ascending: false });
-      } else if (filters.sortBy === "deadline") {
-        query = query.order("fit_score", { ascending: false }); // secondary
-      } else {
-        query = query.order("fit_score", { ascending: false });
-      }
-
-      query = query.range(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE - 1);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("useOpportunities error:", error.message);
-        setLoading(false);
-        return;
-      }
-
-      let results = (data ?? []) as unknown as OpportunityMatch[];
-
-      // Client-side filters that can't be done via foreign table filters easily
-      if (filters.state !== "all") {
-        results = results.filter(
-          (m) =>
-            m.opportunity?.place_of_performance?.state?.toUpperCase() ===
-            filters.state.toUpperCase()
-        );
-      }
-
-      if (filters.setAside !== "all") {
-        results = results.filter(
-          (m) =>
-            m.opportunity?.set_aside_type?.toUpperCase() ===
-            filters.setAside.toUpperCase()
-        );
-      }
-
-      if (filters.deadline !== "all") {
-        const now = new Date();
-        const cutoffDays =
-          filters.deadline === "week" ? 7 :
-          filters.deadline === "two_weeks" ? 14 : 30;
-        const cutoff = new Date(now.getTime() + cutoffDays * 86_400_000);
-        results = results.filter((m) => {
-          if (!m.opportunity?.response_deadline) return true;
-          return new Date(m.opportunity.response_deadline) <= cutoff;
-        });
-      }
-
-      // Client-side sort for deadline/posted_date since those require joining
-      if (filters.sortBy === "deadline") {
-        results.sort((a, b) => {
-          const da = a.opportunity?.response_deadline ? new Date(a.opportunity.response_deadline).getTime() : Infinity;
-          const db = b.opportunity?.response_deadline ? new Date(b.opportunity.response_deadline).getTime() : Infinity;
-          return da - db;
-        });
-      } else if (filters.sortBy === "posted_date") {
-        results.sort((a, b) => {
-          const da = a.opportunity?.posted_date ? new Date(a.opportunity.posted_date).getTime() : 0;
-          const db = b.opportunity?.posted_date ? new Date(b.opportunity.posted_date).getTime() : 0;
-          return db - da;
-        });
-      }
-
-      setMatches((prev) => (replace ? results : [...prev, ...results]));
-      setHasMore(results.length === PAGE_SIZE);
-      setLoading(false);
-    },
-    [userId, filters]
-  );
-
-  // Reset to page 0 when filters change
-  useEffect(() => {
-    setPage(0);
-    fetchMatches(0, true);
-  }, [fetchMatches]);
-
-  const loadMore = () => {
-    const next = page + 1;
-    setPage(next);
-    fetchMatches(next, false);
-  };
-
-  const updateStatus = async (matchId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("opportunity_matches")
-      .update({
-        status: newStatus,
-        ...(newStatus === "viewed" ? { viewed_at: new Date().toISOString() } : {}),
-        ...(["interested", "passed"].includes(newStatus) ? { action_at: new Date().toISOString() } : {}),
-      })
-      .eq("id", matchId);
-
-    if (!error) {
-      setMatches((prev) =>
-        prev.map((m) =>
-          m.id === matchId ? { ...m, status: newStatus } : m
-        )
-      );
+    if (err) {
+      setError(err.message);
+    } else {
+      setOpportunities((data ?? []) as DbOpportunity[]);
     }
-  };
+    setLoading(false);
+  }, [companyId, today]);
 
-  return { matches, loading, hasMore, loadMore, updateStatus };
+  // ── Load opportunity_settings ─────────────────────────────
+  const loadSettings = useCallback(async () => {
+    if (!companyId) return;
+
+    const { data } = await supabase
+      .from("opportunity_settings")
+      .select("trades, radius_miles, center_lat, center_lng, rotation_index")
+      .eq("company_id", companyId)
+      .single();
+
+    if (data) {
+      setSettings({
+        trades:         data.trades        ?? [],
+        radius_miles:   data.radius_miles  ?? 50,
+        center_lat:     data.center_lat    ?? null,
+        center_lng:     data.center_lng    ?? null,
+        rotation_index: data.rotation_index ?? 0,
+      });
+    }
+  }, [companyId]);
+
+  // ── Generate today's batch via edge function ──────────────
+  const generate = useCallback(async (forceRefresh = false) => {
+    if (!companyId) return;
+    setGenerating(true);
+    setError(null);
+
+    try {
+      const { error: fnErr } = await supabase.functions.invoke("generate-opportunities", {
+        body: { company_id: companyId, force_refresh: forceRefresh },
+      });
+
+      if (fnErr) {
+        setError(fnErr.message || "Failed to generate opportunities");
+      } else {
+        await loadOpportunities();
+        await loadSettings();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setGenerating(false);
+    }
+  }, [companyId, loadOpportunities, loadSettings]);
+
+  // ── Save settings ─────────────────────────────────────────
+  const saveSettings = useCallback(async (updates: Partial<OpportunitySettings>) => {
+    if (!companyId) return;
+
+    const { error: err } = await supabase
+      .from("opportunity_settings")
+      .upsert({
+        company_id: companyId,
+        ...updates,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "company_id" });
+
+    if (!err) {
+      setSettings((prev) => prev ? { ...prev, ...updates } : (updates as OpportunitySettings));
+    }
+  }, [companyId]);
+
+  // ── Update card status ────────────────────────────────────
+  const updateStatus = useCallback(async (id: string, status: OppStatus) => {
+    // Optimistic update
+    setOpportunities((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, status } : o)),
+    );
+
+    const updates: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (status === "reached_out") {
+      updates.outreach_date = new Date().toISOString();
+    }
+
+    const { error: err } = await supabase
+      .from("opportunities")
+      .update(updates)
+      .eq("id", id);
+
+    if (err) {
+      console.error("updateStatus error:", err.message);
+      // Revert on failure
+      await loadOpportunities();
+    }
+  }, [loadOpportunities]);
+
+  // ── Bootstrap ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!companyId) return;
+
+    const init = async () => {
+      await Promise.all([loadOpportunities(), loadSettings()]);
+    };
+    init();
+  }, [companyId, loadOpportunities, loadSettings]);
+
+  // Auto-generate if today's batch is empty after initial load
+  useEffect(() => {
+    if (!loading && !generating && companyId && opportunities.length === 0) {
+      generate(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  return {
+    opportunities,
+    settings,
+    loading,
+    generating,
+    error,
+    generate,
+    saveSettings,
+    updateStatus,
+    reload: loadOpportunities,
+  };
 }
+
+// ─────────────────────────────────────────────────────────────
+// Sidebar badge count (kept for AppLayout compatibility)
+// ─────────────────────────────────────────────────────────────
 
 export function useNewMatchCount(userId: string | undefined) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
+    const today = new Date().toISOString().split("T")[0];
 
+    // First resolve company_id, then count new opportunities
     supabase
-      .from("opportunity_matches")
-      .select("id", { count: "exact", head: true })
-      .eq("member_id", userId)
-      .eq("status", "new")
-      .then(({ count: c }: { count: number | null }) => setCount(c ?? 0));
+      .from("companies")
+      .select("id")
+      .eq("profile_id", userId)
+      .single()
+      .then(({ data: co }) => {
+        if (!co?.id) return;
+        supabase
+          .from("opportunities")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", co.id)
+          .eq("shown_date", today)
+          .eq("status", "new")
+          .then(({ count: c }) => setCount(c ?? 0));
+      });
   }, [userId]);
 
   return count;
