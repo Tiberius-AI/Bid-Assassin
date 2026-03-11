@@ -11,7 +11,7 @@ import { useWebPush } from "@/hooks/useWebPush";
 import { Button } from "@/components/ui/button";
 import {
   Select,
-  SelectContent,
+  SelectContent,h
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -33,7 +33,6 @@ import {
   ChevronDown,
   ChevronUp,
   Bell,
-  BellOff,
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
