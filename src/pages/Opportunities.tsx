@@ -7,6 +7,7 @@ import {
   type OpportunityFilters,
   type OpportunityMatch,
 } from "@/hooks/useOpportunities";
+import { useWebPush } from "@/hooks/useWebPush";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -31,6 +32,9 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  Bell,
+  BellOff,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -367,6 +371,42 @@ function FilterBar({
 }
 
 // ---------------------------------------------------------------------------
+// Push permission banner
+// ---------------------------------------------------------------------------
+
+function PushPermissionBanner({
+  onEnable,
+  onDismiss,
+}: {
+  onEnable: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4 text-sm">
+      <Bell className="h-4 w-4 text-red-600 shrink-0" />
+      <p className="flex-1 text-gray-700">
+        <span className="font-medium text-gray-900">Get instant alerts</span> — enable browser
+        notifications for hot matches (80%+).
+      </p>
+      <Button
+        size="sm"
+        className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+        onClick={onEnable}
+      >
+        Enable
+      </Button>
+      <button
+        onClick={onDismiss}
+        className="text-gray-400 hover:text-gray-600 shrink-0"
+        aria-label="Dismiss"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -380,6 +420,18 @@ export default function Opportunities() {
     userId,
     filters
   );
+
+  const { status: pushStatus, subscribe: subscribePush } = useWebPush(userId);
+  const [pushDismissed, setPushDismissed] = useState(false);
+
+  const handleEnablePush = async () => {
+    await subscribePush();
+    if (Notification.permission === "granted") {
+      toast.success("Push notifications enabled!");
+    } else {
+      toast.error("Notifications blocked. Check your browser settings.");
+    }
+  };
 
   const handlePass = async (match: OpportunityMatch) => {
     await updateStatus(match.id, "passed");
@@ -442,6 +494,14 @@ export default function Opportunities() {
           Federal contracts matched to your profile by The Prospector.
         </p>
       </div>
+
+      {/* Push permission banner — show once until dismissed or subscribed */}
+      {pushStatus === "prompt" && !pushDismissed && (
+        <PushPermissionBanner
+          onEnable={handleEnablePush}
+          onDismiss={() => setPushDismissed(true)}
+        />
+      )}
 
       {/* Filters */}
       <FilterBar

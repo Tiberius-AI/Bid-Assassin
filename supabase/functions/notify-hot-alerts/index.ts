@@ -348,6 +348,19 @@ Deno.serve(async (req: Request) => {
 
   console.log(`notify-hot-alerts: sent=${sent}, skipped=${skipped}`);
 
+  // Trigger web push (fire and forget)
+  if (matchRefs.length > 0) {
+    const pushUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-web-push`;
+    fetch(pushUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ match_ids: matchRefs }),
+    }).catch((e) => console.warn("Could not trigger send-web-push:", e));
+  }
+
   return new Response(
     JSON.stringify({ success: true, sent, skipped }),
     { status: 200, headers: { "Content-Type": "application/json" } }
