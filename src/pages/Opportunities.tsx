@@ -7,7 +7,7 @@ import {
   Building2, User, Star, Phone, Globe, MapPin,
   Bookmark, X, MessageSquare, Mail, Smartphone,
   Copy, Check, ExternalLink, Lock, Zap,
-  SlidersHorizontal, ChevronRight, RefreshCw, Loader2,
+  SlidersHorizontal, ChevronRight, RefreshCw, Loader2, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -591,6 +591,58 @@ export default function Opportunities() {
                   );
                 })}
               </div>
+
+              {/* Research shortcuts (company cards only) */}
+              {outreachTarget.card_type === "company" && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Research</p>
+                  <div className="flex gap-2">
+                    <a
+                      href={`https://www.google.com/search?q=${encodeURIComponent(
+                        [outreachTarget.business_name, outreachTarget.address?.split(",").slice(-2).join(",").trim()].filter(Boolean).join(" ")
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1"
+                    >
+                      <Button variant="outline" size="sm" className="w-full text-gray-600 border-gray-200 hover:bg-gray-50 text-xs">
+                        <Search className="h-3.5 w-3.5 mr-1.5" />
+                        Google Profile
+                      </Button>
+                    </a>
+                    {outreachTarget.website ? (
+                      <a
+                        href={outreachTarget.website.startsWith("http") ? outreachTarget.website : `https://${outreachTarget.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1"
+                      >
+                        <Button variant="outline" size="sm" className="w-full text-gray-600 border-gray-200 hover:bg-gray-50 text-xs">
+                          <Globe className="h-3.5 w-3.5 mr-1.5" />
+                          Visit Website
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button variant="outline" size="sm" className="flex-1 text-xs text-gray-400 border-gray-200" disabled>
+                        <Globe className="h-3.5 w-3.5 mr-1.5" />
+                        No Website
+                      </Button>
+                    )}
+                    <a
+                      href="https://hunter.io/extension"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1"
+                      title="Install Hunter.io browser extension to find emails directly from company websites"
+                    >
+                      <Button variant="outline" size="sm" className="w-full text-gray-600 border-gray-200 hover:bg-gray-50 text-xs">
+                        <Mail className="h-3.5 w-3.5 mr-1.5" />
+                        Find Email
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* Subject */}
               {outreachChannel === "email" && template.subject && (

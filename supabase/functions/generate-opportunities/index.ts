@@ -112,8 +112,16 @@ interface NewOpportunity {
 async function geocode(city: string, state: string, apiKey: string): Promise<LatLng | null> {
   const address = encodeURIComponent(`${city}, ${state}`);
   const res = await fetch(`${GEOCODE_URL}?address=${address}&key=${apiKey}`);
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`Geocode HTTP error ${res.status}:`, text.substring(0, 200));
+    return null;
+  }
   const data = await res.json();
+  if (data.status !== "OK") {
+    console.error(`Geocode API status: ${data.status}`, data.error_message ?? "");
+    return null;
+  }
   const loc = data?.results?.[0]?.geometry?.location;
   if (!loc) return null;
   return { lat: loc.lat, lng: loc.lng };
@@ -236,7 +244,7 @@ async function fetchPlaces(
     locationBias: {
       circle: {
         center: { latitude: center.lat, longitude: center.lng },
-        radius: radiusMiles * MILES_TO_METERS,
+        radius: Math.min(radiusMiles * MILES_TO_METERS, 50000),
       },
     },
     maxResultCount: 20,
@@ -396,6 +404,8 @@ Deno.serve(async (req: Request) => {
   const state = company.state || "";
   const trades: string[] = company.trades || [];
   const cityState = [city, state].filter(Boolean).join(", ");
+
+  console.log(`Company: "${company.name}" | city="${city}" state="${state}" trades=${JSON.stringify(trades)}`);
 
   if (!cityState) {
     return new Response(
