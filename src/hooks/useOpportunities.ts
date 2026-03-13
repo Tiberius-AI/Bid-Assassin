@@ -9,6 +9,20 @@ export type OppStatus =
   | "new" | "saved" | "dismissed" | "reached_out"
   | "responded" | "proposal_sent" | "won" | "lost";
 
+export interface PermitMetadata {
+  permit_number: string;
+  permit_type: string;
+  work_type: string | null;
+  declared_valuation: number;
+  area_sf: number;
+  primary_contact: string | null;
+  date_submitted: string | null;
+  date_issued: string | null;
+  council_district: string | null;
+  related_permits?: { permit_number: string; permit_type: string; valuation: number }[];
+  related_count?: number;
+}
+
 export interface DbOpportunity {
   id: string;
   card_type: "company" | "person";
@@ -35,6 +49,8 @@ export interface DbOpportunity {
   person_company:  string | null;
   linkedin_url:    string | null;
   person_location: string | null;
+  // Permit
+  permit_metadata:   PermitMetadata | null;
 }
 
 export interface OpportunitySettings {
@@ -43,6 +59,8 @@ export interface OpportunitySettings {
   center_lat:   number | null;
   center_lng:   number | null;
   rotation_index: number;
+  permits_enabled:      boolean;
+  permit_min_valuation: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -70,6 +88,7 @@ export function useOpportunities(companyId: string | undefined) {
       .eq("company_id", companyId)
       .eq("shown_date", today)
       .neq("status", "dismissed")
+      .order("source", { ascending: true })   // 'permit' before others alphabetically
       .order("match_score", { ascending: false });
 
     if (err) {
@@ -86,7 +105,7 @@ export function useOpportunities(companyId: string | undefined) {
 
     const { data } = await supabase
       .from("opportunity_settings")
-      .select("trades, radius_miles, center_lat, center_lng, rotation_index")
+      .select("trades, radius_miles, center_lat, center_lng, rotation_index, permits_enabled, permit_min_valuation")
       .eq("company_id", companyId)
       .single();
 
@@ -97,6 +116,8 @@ export function useOpportunities(companyId: string | undefined) {
         center_lat:     data.center_lat    ?? null,
         center_lng:     data.center_lng    ?? null,
         rotation_index: data.rotation_index ?? 0,
+        permits_enabled:      data.permits_enabled ?? true,
+        permit_min_valuation: data.permit_min_valuation ?? 50000,
       });
     }
   }, [companyId]);

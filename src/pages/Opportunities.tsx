@@ -8,10 +8,12 @@ import {
   Bookmark, X, MessageSquare, Mail, Smartphone,
   Copy, Check, ExternalLink, Lock, Zap,
   SlidersHorizontal, ChevronRight, RefreshCw, Loader2, Search,
+  ClipboardList, DollarSign, Ruler, Calendar, HardHat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { useOpportunities, type DbOpportunity, type OppStatus } from "@/hooks/useOpportunities";
+import { Switch } from "@/components/ui/switch";
+import { useOpportunities, type DbOpportunity, type OppStatus, type PermitMetadata } from "@/hooks/useOpportunities";
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -134,12 +136,16 @@ export default function Opportunities() {
   // Local settings state (synced from DB via hook)
   const [localRadius, setLocalRadius]   = useState(50);
   const [localTrades, setLocalTrades]   = useState<string[]>([]);
+  const [localPermitsEnabled, setLocalPermitsEnabled]     = useState(true);
+  const [localPermitMinValue, setLocalPermitMinValue]     = useState(50000);
   const settingsLoaded                  = settings !== null;
 
   // Sync from DB settings once loaded
   if (settingsLoaded && localTrades.length === 0 && settings.trades.length > 0) {
     setLocalTrades(settings.trades);
     setLocalRadius(settings.radius_miles);
+    setLocalPermitsEnabled(settings.permits_enabled);
+    setLocalPermitMinValue(settings.permit_min_valuation);
   }
 
   const primaryTrade = localTrades[0] || company?.trades?.[0] || "General";
@@ -148,12 +154,14 @@ export default function Opportunities() {
   const visible      = opportunities;
   const newCount     = visible.filter((o) => o.status === "new").length;
   const savedCount   = visible.filter((o) => o.status === "saved").length;
-  const companyCount = visible.filter((o) => o.card_type === "company").length;
+  const companyCount = visible.filter((o) => o.card_type === "company" && o.source !== "permit").length;
   const personCount  = visible.filter((o) => o.card_type === "person").length;
+  const permitCount  = visible.filter((o) => o.source === "permit").length;
 
   const feedItems = useMemo(() => {
     if (activeFilter === "saved")     return visible.filter((o) => o.status === "saved");
-    if (activeFilter === "companies") return visible.filter((o) => o.card_type === "company");
+    if (activeFilter === "permits")   return visible.filter((o) => o.source === "permit");
+    if (activeFilter === "companies") return visible.filter((o) => o.card_type === "company" && o.source !== "permit");
     if (activeFilter === "people")    return visible.filter((o) => o.card_type === "person");
     return visible;
   }, [visible, activeFilter]);
@@ -176,7 +184,12 @@ export default function Opportunities() {
   };
 
   const handleSaveSettings = async () => {
-    await saveSettings({ trades: localTrades, radius_miles: localRadius });
+    await saveSettings({
+      trades: localTrades,
+      radius_miles: localRadius,
+      permits_enabled: localPermitsEnabled,
+      permit_min_valuation: localPermitMinValue,
+    });
     setSettingsOpen(false);
     generate(true); // regenerate with new settings
   };
@@ -316,6 +329,7 @@ export default function Opportunities() {
               {[
                 { key: "all",       label: `All (${visible.length})` },
                 { key: "saved",     label: `Saved (${savedCount})` },
+                ...(permitCount > 0 ? [{ key: "permits", label: `Permits (${permitCount})` }] : []),
                 { key: "companies", label: `Companies (${companyCount})` },
                 { key: "people",    label: `People (${personCount})` },
               ].map((f) => (
@@ -384,7 +398,9 @@ export default function Opportunities() {
                 { name: "Google Places",             status: "active",  label: "Active" },
                 { name: "LinkedIn (via Google)",      status: "active",  label: "Active" },
                 { name: "SAM.gov Federal Contracts",  status: "pending", label: "IRS Verification Pending" },
-                { name: "Building Permits",           status: "soon",    label: "Coming Soon" },
+                { name: "Building Permits (SA)",      status: "active",  label: "Active" },
+                { name: "Building Permits (Austin)",  status: "active",  label: "Active" },
+                { name: "Building Permits (Houston)", status: "soon",    label: "Coming Soon" },
                 { name: "Public Bid Boards",          status: "soon",    label: "Coming Soon" },
               ].map((src) => (
                 <div
@@ -408,6 +424,47 @@ export default function Opportunities() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Permit settings */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Building Permits</p>
+                <p className="text-xs text-gray-500 mt-0.5">San Antonio &amp; Austin commercial permits from open data</p>
+              </div>
+              <Switch
+                checked={localPermitsEnabled}
+                onCheckedChange={setLocalPermitsEnabled}
+              />
+            </div>
+
+            {localPermitsEnabled && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-medium text-gray-600">Minimum Project Value</label>
+                  <span className="text-xs font-bold text-orange-600">
+                    {localPermitMinValue >= 1_000_000
+                      ? `$${(localPermitMinValue / 1_000_000).toFixed(1)}M`
+                      : `$${(localPermitMinValue / 1_000).toFixed(0)}K`}
+                  </span>
+                </div>
+                <Slider
+                  value={[localPermitMinValue]}
+                  min={25000}
+                  max={2000000}
+                  step={25000}
+                  onValueChange={([v]) => setLocalPermitMinValue(v)}
+                  className="max-w-sm"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400 mt-1 max-w-sm">
+                  <span>$25K</span>
+                  <span>$500K</span>
+                  <span>$1M</span>
+                  <span>$2M</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -487,12 +544,14 @@ export default function Opportunities() {
                         <div className="flex items-center gap-3 min-w-0">
                           <div
                             className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              opp.card_type === "company" ? "bg-blue-50" : "bg-purple-50"
+                              opp.source === "permit" ? "bg-orange-50" : opp.card_type === "company" ? "bg-blue-50" : "bg-purple-50"
                             }`}
                           >
-                            {opp.card_type === "company"
-                              ? <Building2 className="h-4 w-4 text-blue-600" />
-                              : <User className="h-4 w-4 text-purple-600" />}
+                            {opp.source === "permit"
+                              ? <ClipboardList className="h-4 w-4 text-orange-600" />
+                              : opp.card_type === "company"
+                                ? <Building2 className="h-4 w-4 text-blue-600" />
+                                : <User className="h-4 w-4 text-purple-600" />}
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">
@@ -744,15 +803,22 @@ function OppCard({
 }) {
   const isSaved = opp.status === "saved";
 
+  const isPermit = opp.source === "permit";
+  const pm = opp.permit_metadata as PermitMetadata | null;
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
+    <div className={`bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 ${
+      isPermit ? "border-orange-200" : "border-gray-200"
+    }`}>
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          opp.card_type === "company" ? "bg-blue-50" : "bg-purple-50"
+          isPermit ? "bg-orange-50" : opp.card_type === "company" ? "bg-blue-50" : "bg-purple-50"
         }`}>
-          {opp.card_type === "company"
-            ? <Building2 className="h-5 w-5 text-blue-600" />
-            : <User className="h-5 w-5 text-purple-600" />}
+          {isPermit
+            ? <ClipboardList className="h-5 w-5 text-orange-600" />
+            : opp.card_type === "company"
+              ? <Building2 className="h-5 w-5 text-blue-600" />
+              : <User className="h-5 w-5 text-purple-600" />}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -764,7 +830,7 @@ function OppCard({
                 </span>
               )}
               <span className="font-semibold text-gray-900 text-sm">
-                {opp.card_type === "company" ? opp.business_name : opp.person_name}
+                {isPermit ? (pm?.primary_contact || opp.business_name) : opp.card_type === "company" ? opp.business_name : opp.person_name}
               </span>
             </div>
             <span className={`flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full border ${scoreColor(opp.match_score)}`}>
@@ -773,7 +839,16 @@ function OppCard({
           </div>
 
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            {opp.card_type === "company" ? (
+            {isPermit ? (
+              <>
+                <span className="text-xs text-gray-500">{opp.business_type}</span>
+                {opp.distance_miles && (
+                  <><span className="text-gray-300">·</span><span className="text-xs text-gray-500">{opp.distance_miles}mi</span></>
+                )}
+                <span className="text-gray-300">·</span>
+                <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">PERMIT</span>
+              </>
+            ) : opp.card_type === "company" ? (
               <>
                 <span className="text-xs text-gray-500">{opp.business_type}</span>
                 {opp.distance_miles && (
@@ -796,8 +871,73 @@ function OppCard({
         </div>
       </div>
 
-      {/* Company details */}
-      {opp.card_type === "company" && (
+      {/* Permit details */}
+      {isPermit && pm && (
+        <div className="mt-3 space-y-1.5">
+          {/* Value + SF row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {pm.declared_valuation > 0 && (
+              <div className="flex items-center gap-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                <span className="text-xs font-semibold text-gray-700">
+                  {pm.declared_valuation >= 1_000_000
+                    ? `$${(pm.declared_valuation / 1_000_000).toFixed(1)}M`
+                    : `$${(pm.declared_valuation / 1_000).toFixed(0)}K`}
+                  <span className="font-normal text-gray-500"> est. value</span>
+                </span>
+              </div>
+            )}
+            {pm.area_sf > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Ruler className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-xs text-gray-600">{pm.area_sf.toLocaleString()} SF</span>
+              </div>
+            )}
+          </div>
+
+          {/* Address */}
+          {opp.address && (
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+              <span className="text-xs text-gray-500">{opp.address}</span>
+            </div>
+          )}
+
+          {/* Applicant */}
+          {pm.primary_contact && (
+            <div className="flex items-center gap-1.5">
+              <HardHat className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+              <span className="text-xs text-gray-600">Applicant: {pm.primary_contact}</span>
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {pm.date_submitted && (
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-xs text-gray-500">Filed: {new Date(pm.date_submitted).toLocaleDateString()}</span>
+              </div>
+            )}
+            {pm.date_issued && (
+              <span className="text-xs text-gray-500">Issued: {new Date(pm.date_issued).toLocaleDateString()}</span>
+            )}
+          </div>
+
+          {/* Permit # + related count */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-400">#{pm.permit_number}</span>
+            {pm.related_count && pm.related_count > 0 && (
+              <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                +{pm.related_count} related trade permit{pm.related_count > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Company details (non-permit) */}
+      {opp.card_type === "company" && !isPermit && (
         <div className="mt-3 space-y-1.5">
           {opp.google_rating !== null && opp.google_rating !== undefined && (
             <div className="flex items-center gap-1.5">
@@ -871,6 +1011,18 @@ function OppCard({
           <Bookmark className={`h-3.5 w-3.5 ${isSaved ? "fill-yellow-400 text-yellow-400" : ""}`} />
           {isSaved ? "Saved" : "Save"}
         </button>
+        {isPermit && pm?.primary_contact && (
+          <a
+            href={`https://www.google.com/search?q=${encodeURIComponent(
+              `"${pm.primary_contact}" ${opp.address ?? ""} general contractor`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors"
+          >
+            <Search className="h-3.5 w-3.5" /> Find GC
+          </a>
+        )}
         <button
           onClick={() => onReachOut()}
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
