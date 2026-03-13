@@ -692,7 +692,8 @@ export default function Opportunities() {
                 {outreachChannel === "sms" && (
                   <Button size="sm" className="flex-1 bg-red-600 hover:bg-red-700"
                     onClick={() => {
-                      window.open(`sms:?body=${encodeURIComponent(template.body)}`);
+                      const digits = (outreachTarget.phone ?? "").replace(/\D/g, "");
+                      window.open(`sms:${digits}?&body=${encodeURIComponent(template.body)}`);
                       updateStatus(outreachTarget.id, "reached_out");
                       setOutreachTarget(null);
                     }}>
