@@ -213,8 +213,12 @@ async function fetchSocrataPermits(): Promise<SocrataPermit[]> {
   let offset = 0;
 
   while (true) {
+    // Austin permit_class values include 'C - Commercial', 'C Commercial', or just 'C'.
+    // Filter by valuation > 0 + issued_date cutoff and let scoring handle relevance.
+    // We exclude residential by filtering work_class not containing 'New Single Family'
+    // or 'New Two Family' — far less fragile than matching permit_class exactly.
     const where = encodeURIComponent(
-      `permit_class='C Commercial' AND issued_date > '${cutoff}'`,
+      `issued_date > '${cutoff}' AND total_valuation > '${DEFAULT_MIN_VALUATION}' AND work_class not in('New Single Family','New Two Family','Remodel Residential')`,
     );
     const url = `${SOCRATA_BASE}?$where=${where}&$limit=${PAGE_SIZE}&$offset=${offset}&$order=issued_date DESC`;
 
@@ -228,6 +232,7 @@ async function fetchSocrataPermits(): Promise<SocrataPermit[]> {
     }
 
     const page: SocrataPermit[] = await res.json();
+    console.log(`Socrata page offset=${offset}: ${page.length} rows`);
     if (page.length === 0) break;
 
     allResults.push(...page);
