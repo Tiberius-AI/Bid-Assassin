@@ -122,19 +122,30 @@ export function useOpportunities(companyId: string | undefined) {
     }
   }, [companyId]);
 
-  // ── Generate today's batch via edge function ──────────────
+  // ── Generate today's batch via edge functions ─────────────
+  // Runs generate-opportunities (Google Places + LinkedIn) in parallel
+  // with both permit functions (SA + Austin). Permit functions handle
+  // their own permits_enabled check and source_id deduplication.
   const generate = useCallback(async (forceRefresh = false) => {
     if (!companyId) return;
     setGenerating(true);
     setError(null);
 
     try {
-      const { data: fnData, error: fnErr } = await supabase.functions.invoke("generate-opportunities", {
-        body: { company_id: companyId, force_refresh: forceRefresh },
-      });
+      const [oppResult, , ] = await Promise.all([
+        supabase.functions.invoke("generate-opportunities", {
+          body: { company_id: companyId, force_refresh: forceRefresh },
+        }),
+        supabase.functions.invoke("fetch-permits-sa", {
+          body: { company_id: companyId },
+        }),
+        supabase.functions.invoke("fetch-permits-austin", {
+          body: { company_id: companyId },
+        }),
+      ]);
 
+      const { data: fnData, error: fnErr } = oppResult;
       if (fnErr) {
-        // Try to extract the real error message from the response body
         const detail = fnData?.error || fnErr.message || "Failed to generate opportunities";
         setError(detail);
         console.error("generate-opportunities error:", detail, fnErr);
