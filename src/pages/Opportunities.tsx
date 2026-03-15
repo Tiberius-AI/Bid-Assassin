@@ -1,7 +1,7 @@
 /**
  * Opportunities — The Prospector (Phase 2: live Google Places + LinkedIn data)
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSession } from "@/context/SessionContext";
 import {
   Building2, User, Star, Phone, Globe, MapPin,
@@ -115,6 +115,8 @@ export default function Opportunities() {
   const companyName = company?.name       || "Your Company";
   const city        = company?.city       || company?.state || "your area";
 
+  const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today");
+
   const {
     opportunities,
     settings,
@@ -124,7 +126,8 @@ export default function Opportunities() {
     generate,
     saveSettings,
     updateStatus,
-  } = useOpportunities(company?.id);
+    insertPermits,
+  } = useOpportunities(company?.id, dateFilter);
 
   // Austin permits — fetched client-side, merged into the feed
   const {
@@ -134,6 +137,7 @@ export default function Opportunities() {
 
   // UI state
   const [view,           setView]           = useState<"feed" | "pipeline">("feed");
+  const [visibleCount, setVisibleCount] = useState(20);
   const [activeFilter,   setActiveFilter]   = useState("all");
   const [settingsOpen,   setSettingsOpen]   = useState(false);
   const [outreachTarget, setOutreachTarget] = useState<DbOpportunity | null>(null);
@@ -157,11 +161,33 @@ export default function Opportunities() {
 
   const primaryTrade = localTrades[0] || company?.trades?.[0] || "General";
 
-  // Merge DB opportunities with client-side Austin permits (deduplicate by source_id)
-  const dbSourceIds = new Set(opportunities.map((o) => o.source_id).filter(Boolean));
-  const newAustinPermits = austinPermits.filter((p) => !dbSourceIds.has(p.source_id));
-  console.log(`[Opportunities] DB opps: ${opportunities.length} | Austin permits: ${austinPermits.length} | new after dedup: ${newAustinPermits.length}`);
-  const visible = [...opportunities, ...newAustinPermits];
+  // Merge DB opportunities with client-side Austin permits (today view only)
+  const newAustinPermits = useMemo(() => {
+    if (dateFilter !== "today") return [];
+    const dbSourceIds = new Set(opportunities.map((o) => o.source_id).filter(Boolean));
+    return austinPermits.filter((p) => !dbSourceIds.has(p.source_id));
+  }, [opportunities, austinPermits, dateFilter]);
+
+  // Persist new client-side permits to DB (so status updates work via real UUIDs)
+  const persistedRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (newAustinPermits.length === 0) return;
+    const toInsert = newAustinPermits.filter((p) => p.source_id && !persistedRef.current.has(p.source_id));
+    if (toInsert.length === 0) return;
+    toInsert.forEach((p) => { if (p.source_id) persistedRef.current.add(p.source_id); });
+    insertPermits(toInsert);
+  }, [newAustinPermits, insertPermits]);
+
+  // Combined + sorted feed: permits first, then by score descending
+  const visible = useMemo(() => {
+    const combined = [...opportunities, ...newAustinPermits];
+    return combined.sort((a, b) => {
+      if (a.source === "permit" && b.source !== "permit") return -1;
+      if (a.source !== "permit" && b.source === "permit") return 1;
+      return b.match_score - a.match_score;
+    });
+  }, [opportunities, newAustinPermits]);
+
   const newCount     = visible.filter((o) => o.status === "new").length;
   const savedCount   = visible.filter((o) => o.status === "saved").length;
   const companyCount = visible.filter((o) => o.card_type === "company" && o.source !== "permit").length;
@@ -175,6 +201,13 @@ export default function Opportunities() {
     if (activeFilter === "people")    return visible.filter((o) => o.card_type === "person");
     return visible;
   }, [visible, activeFilter]);
+
+  // Reset pagination when filter or date tab changes
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [activeFilter, dateFilter]);
+
+  const renderedItems = feedItems.slice(0, visibleCount);
 
   const pipelineItems = opportunities.filter((o) => PIPELINE_STAGES.includes(o.status));
 
@@ -310,6 +343,23 @@ export default function Opportunities() {
               <SlidersHorizontal className="h-4 w-4" />
             </button>
           </div>
+        </div>
+
+        {/* Date tabs */}
+        <div className="flex gap-1 px-4 lg:px-6 pb-2">
+          {(["today", "week", "all"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setDateFilter(tab)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                dateFilter === tab
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              {tab === "today" ? "Today" : tab === "week" ? "This Week" : "All Time"}
+            </button>
+          ))}
         </div>
 
         {/* Rotation strip */}
@@ -509,7 +559,7 @@ export default function Opportunities() {
                 </p>
               </div>
             )}
-            {feedItems.map((opp) => (
+            {renderedItems.map((opp) => (
               <OppCard
                 key={opp.id}
                 opp={opp}
@@ -520,6 +570,14 @@ export default function Opportunities() {
                 onReachOut={(ch) => openOutreach(opp, ch)}
               />
             ))}
+            {visibleCount < feedItems.length && (
+              <button
+                onClick={() => setVisibleCount((c) => c + 20)}
+                className="w-full py-3 text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-200 rounded-xl bg-white hover:bg-gray-50 transition-colors"
+              >
+                Load More ({feedItems.length - visibleCount} remaining)
+              </button>
+            )}
           </div>
         )}
 

@@ -67,7 +67,7 @@ export interface OpportunitySettings {
 // Main hook
 // ─────────────────────────────────────────────────────────────
 
-export function useOpportunities(companyId: string | undefined) {
+export function useOpportunities(companyId: string | undefined, dateFilter: "today" | "week" | "all" = "today") {
   const [opportunities, setOpportunities] = useState<DbOpportunity[]>([]);
   const [settings, setSettings]           = useState<OpportunitySettings | null>(null);
   const [loading, setLoading]             = useState(true);
@@ -82,13 +82,22 @@ export function useOpportunities(companyId: string | undefined) {
     setLoading(true);
     setError(null);
 
-    const { data, error: err } = await supabase
+    let query = supabase
       .from("opportunities")
       .select("*")
       .eq("company_id", companyId)
-      .eq("shown_date", today)
-      .neq("status", "dismissed")
-      .order("source", { ascending: true })   // 'permit' before others alphabetically
+      .neq("status", "dismissed");
+
+    if (dateFilter === "today") {
+      query = query.eq("shown_date", today);
+    } else if (dateFilter === "week") {
+      const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().split("T")[0];
+      query = query.gte("shown_date", weekAgo);
+    }
+    // "all" — no date filter
+
+    const { data, error: err } = await query
+      .order("source", { ascending: true })
       .order("match_score", { ascending: false });
 
     if (err) {
@@ -97,7 +106,7 @@ export function useOpportunities(companyId: string | undefined) {
       setOpportunities((data ?? []) as DbOpportunity[]);
     }
     setLoading(false);
-  }, [companyId, today]);
+  }, [companyId, today, dateFilter]);
 
   // ── Load opportunity_settings ─────────────────────────────
   const loadSettings = useCallback(async () => {
@@ -181,6 +190,19 @@ export function useOpportunities(companyId: string | undefined) {
     }
   }, [companyId]);
 
+  // ── Insert client-side permits to DB ──────────────────────
+  const insertPermits = useCallback(async (permits: DbOpportunity[]) => {
+    if (!companyId || permits.length === 0) return;
+    // Strip the local fake id so Postgres generates a real UUID
+    const rows = permits.map(({ id: _id, ...rest }) => ({ ...rest, company_id: companyId }));
+    const { error: err } = await supabase.from("opportunities").insert(rows);
+    if (err) {
+      console.warn("[useOpportunities] insertPermits error:", err.message);
+    } else {
+      await loadOpportunities();
+    }
+  }, [companyId, loadOpportunities]);
+
   // ── Update card status ────────────────────────────────────
   const updateStatus = useCallback(async (id: string, status: OppStatus) => {
     // Optimistic update
@@ -235,6 +257,7 @@ export function useOpportunities(companyId: string | undefined) {
     generate,
     saveSettings,
     updateStatus,
+    insertPermits,
     reload: loadOpportunities,
   };
 }
