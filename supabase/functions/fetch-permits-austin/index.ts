@@ -204,10 +204,22 @@ function addressKey(raw: string): string {
 // ─────────────────────────────────────────────────────────────
 
 async function fetchSocrataPermits(): Promise<SocrataPermit[]> {
-  // Fetch commercial permits issued in the last 180 days
+  // Probe: fetch 1 row without filtering to verify connectivity + field names
+  const probeUrl = `${SOCRATA_BASE}?$limit=1`;
+  const probeRes = await fetch(probeUrl, { headers: { Accept: "application/json" } });
+  if (!probeRes.ok) {
+    console.error(`Socrata probe failed: ${probeRes.status} ${await probeRes.text()}`);
+  } else {
+    const probeData = await probeRes.json();
+    console.log("Socrata probe row (field names):", JSON.stringify(probeData[0] ?? {}));
+  }
+
+  // Fetch permits issued in the last 180 days
   const cutoff = new Date(Date.now() - 180 * 86_400_000)
     .toISOString()
     .split("T")[0];
+
+  console.log(`Querying Socrata with cutoff date: ${cutoff}`);
 
   const allResults: SocrataPermit[] = [];
   let offset = 0;
@@ -218,6 +230,7 @@ async function fetchSocrataPermits(): Promise<SocrataPermit[]> {
     // filtering happens in code after the fetch.
     const where = encodeURIComponent(`issued_date > '${cutoff}'`);
     const url = `${SOCRATA_BASE}?$where=${where}&$limit=${PAGE_SIZE}&$offset=${offset}&$order=issued_date DESC`;
+    console.log(`Socrata URL: ${url}`);
 
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
