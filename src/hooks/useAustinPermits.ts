@@ -316,8 +316,12 @@ export function useAustinPermits(
   const today = new Date().toISOString().split("T")[0];
 
   const load = useCallback(async (force = false) => {
+    console.log("[useAustinPermits] load called — companyId:", companyId, "settings:", settings ? "loaded" : "null");
     if (!companyId || !settings) return;
-    if (!settings.permits_enabled) { setPermits([]); return; }
+    if (!settings.permits_enabled) {
+      console.log("[useAustinPermits] permits_enabled=false, skipping");
+      setPermits([]); return;
+    }
 
     const key = cacheKey(companyId, today);
 
@@ -331,7 +335,9 @@ export function useAustinPermits(
 
     try {
       const rows = await fetchFromSocrata();
+      console.log(`[useAustinPermits] Socrata returned ${rows.length} raw rows`);
       const scored = scoreAndShape(rows, companyId, settings, today);
+      console.log(`[useAustinPermits] ${scored.length} permits after scoring/filtering`);
       writeCache(key, scored);
       setPermits(scored);
     } catch (e) {

@@ -103,21 +103,27 @@ export function useOpportunities(companyId: string | undefined) {
   const loadSettings = useCallback(async () => {
     if (!companyId) return;
 
-    const { data } = await supabase
+    // Select base columns first; permits columns added in migration 009
+    const { data, error: settingsErr } = await supabase
       .from("opportunity_settings")
       .select("trades, radius_miles, center_lat, center_lng, rotation_index, permits_enabled, permit_min_valuation")
       .eq("company_id", companyId)
       .single();
 
-    if (data) {
+    if (settingsErr) {
+      console.warn("[useOpportunities] loadSettings error (migration 009 may not have run):", settingsErr.message);
+    }
+
+    // Always set settings (use defaults for missing permit columns)
+    if (data || settingsErr) {
       setSettings({
-        trades:         data.trades        ?? [],
-        radius_miles:   data.radius_miles  ?? 50,
-        center_lat:     data.center_lat    ?? null,
-        center_lng:     data.center_lng    ?? null,
-        rotation_index: data.rotation_index ?? 0,
-        permits_enabled:      data.permits_enabled ?? true,
-        permit_min_valuation: data.permit_min_valuation ?? 50000,
+        trades:               data?.trades        ?? [],
+        radius_miles:         data?.radius_miles  ?? 50,
+        center_lat:           data?.center_lat    ?? null,
+        center_lng:           data?.center_lng    ?? null,
+        rotation_index:       data?.rotation_index ?? 0,
+        permits_enabled:      data?.permits_enabled ?? true,
+        permit_min_valuation: data?.permit_min_valuation ?? 50000,
       });
     }
   }, [companyId]);

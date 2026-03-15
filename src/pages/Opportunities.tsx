@@ -160,6 +160,7 @@ export default function Opportunities() {
   // Merge DB opportunities with client-side Austin permits (deduplicate by source_id)
   const dbSourceIds = new Set(opportunities.map((o) => o.source_id).filter(Boolean));
   const newAustinPermits = austinPermits.filter((p) => !dbSourceIds.has(p.source_id));
+  console.log(`[Opportunities] DB opps: ${opportunities.length} | Austin permits: ${austinPermits.length} | new after dedup: ${newAustinPermits.length}`);
   const visible = [...opportunities, ...newAustinPermits];
   const newCount     = visible.filter((o) => o.status === "new").length;
   const savedCount   = visible.filter((o) => o.status === "saved").length;
