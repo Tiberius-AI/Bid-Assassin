@@ -37,20 +37,24 @@ const CORS = {
 // ─────────────────────────────────────────────────────────────
 
 interface SocrataPermit {
-  permit_type?: string;
+  permittype?: string;           // actual field name (not permit_type)
+  permit_type_desc?: string;
   permit_class?: string;
+  permit_class_mapped?: string;  // "Commercial", "Residential", etc.
   work_class?: string;
-  project_name?: string;
   description?: string;
-  issued_date?: string;
+  issue_date?: string;           // actual field name (not issued_date)
+  applieddate?: string;
   status_current?: string;
-  original_address?: string;
+  original_address1?: string;    // actual field name (not original_address)
   latitude?: string;
   longitude?: string;
   total_existing_bldg_sqft?: string;
   total_new_add_sqft?: string;
-  total_valuation?: string;
-  permit_type_desc?: string;
+  total_job_valuation?: string;  // actual field name (not total_valuation)
+  total_valuation_remodel?: string;
+  contractor_company_name?: string;
+  applicant_org?: string;
   // Socrata may include extra fields
   [key: string]: unknown;
 }
@@ -228,8 +232,8 @@ async function fetchSocrataPermits(): Promise<SocrataPermit[]> {
     // Use only the date filter — Socrata SoQL is sensitive to column types
     // (quoting a number column causes empty results). Valuation and commercial
     // filtering happens in code after the fetch.
-    const where = encodeURIComponent(`issued_date > '${cutoff}'`);
-    const url = `${SOCRATA_BASE}?$where=${where}&$limit=${PAGE_SIZE}&$offset=${offset}&$order=issued_date DESC`;
+    const where = encodeURIComponent(`issue_date > '${cutoff}' AND permit_class_mapped = 'Commercial'`);
+    const url = `${SOCRATA_BASE}?$where=${where}&$limit=${PAGE_SIZE}&$offset=${offset}&$order=issue_date DESC`;
     console.log(`Socrata URL: ${url}`);
 
     const res = await fetch(url, {
@@ -321,24 +325,24 @@ Deno.serve(async (req: Request) => {
   const permits: ParsedPermit[] = [];
 
   for (const row of rawPermits) {
-    const valuation = parseFloat(row.total_valuation || "0");
+    const valuation = parseFloat(row.total_job_valuation as string || "0");
     if (valuation < DEFAULT_MIN_VALUATION) continue;
 
-    const addr = (row.original_address || "").trim();
-    const lat = parseFloat(row.latitude || "");
-    const lng = parseFloat(row.longitude || "");
+    const addr = ((row.original_address1 as string) || "").trim();
+    const lat = parseFloat(row.latitude as string || "");
+    const lng = parseFloat(row.longitude as string || "");
     const areaSf =
-      parseFloat(row.total_new_add_sqft || "0") +
-      parseFloat(row.total_existing_bldg_sqft || "0");
+      parseFloat(row.total_new_add_sqft as string || "0") +
+      parseFloat(row.total_existing_bldg_sqft as string || "0");
 
-    // Build a stable source_id from address + issued_date + permit_type
-    const sourceId = `austin-${addressKey(addr)}-${row.issued_date || ""}-${row.permit_type || ""}`.substring(0, 200);
+    // Build a stable source_id from address + issue_date + permittype
+    const sourceId = `austin-${addressKey(addr)}-${row.issue_date || ""}-${row.permittype || ""}`.substring(0, 200);
 
     permits.push({
       source_id: sourceId,
-      business_name: row.project_name || row.description || "Commercial Project",
+      business_name: (row.applicant_org as string) || (row.contractor_company_name as string) || row.description as string || "Commercial Project",
       business_type: cleanPermitType(
-        [row.permit_type, row.work_class].filter(Boolean).join(" — "),
+        [row.permittype as string, row.work_class].filter(Boolean).join(" — "),
       ),
       work_class: row.work_class || "",
       address: addr ? `${addr}, Austin, TX` : "Austin, TX",
@@ -348,20 +352,20 @@ Deno.serve(async (req: Request) => {
       valuation,
       area_sf: areaSf,
       permit_metadata: {
-        permit_type: row.permit_type || null,
+        permit_type: row.permittype || null,
         permit_class: row.permit_class || null,
+        permit_class_mapped: row.permit_class_mapped || null,
         work_class: row.work_class || null,
-        project_name: row.project_name || null,
         description: row.description || null,
         declared_valuation: valuation,
         area_sf: areaSf,
-        date_issued: row.issued_date || null,
-        date_submitted: null,
+        date_issued: row.issue_date || null,
+        date_submitted: row.applieddate || null,
         status_current: row.status_current || null,
-        primary_contact: null, // Austin data doesn't include applicant name
+        primary_contact: (row.applicant_org as string) || (row.contractor_company_name as string) || null,
         city: "Austin",
       },
-      date_issued: row.issued_date || undefined,
+      date_issued: (row.issue_date as string) || undefined,
     });
   }
   console.log(`${permits.length} permits above $${DEFAULT_MIN_VALUATION}`);
