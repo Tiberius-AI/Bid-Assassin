@@ -132,16 +132,14 @@ export function useOpportunities(companyId: string | undefined) {
     setError(null);
 
     try {
-      const [oppResult, , ] = await Promise.all([
+      const [oppResult, ] = await Promise.all([
         supabase.functions.invoke("generate-opportunities", {
           body: { company_id: companyId, force_refresh: forceRefresh },
         }),
         supabase.functions.invoke("fetch-permits-sa", {
           body: { company_id: companyId },
         }),
-        supabase.functions.invoke("fetch-permits-austin", {
-          body: { company_id: companyId },
-        }),
+        // Austin permits are fetched client-side via useAustinPermits hook
       ]);
 
       const { data: fnData, error: fnErr } = oppResult;

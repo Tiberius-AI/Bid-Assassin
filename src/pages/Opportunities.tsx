@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useOpportunities, type DbOpportunity, type OppStatus, type PermitMetadata } from "@/hooks/useOpportunities";
+import { useAustinPermits } from "@/hooks/useAustinPermits";
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -125,6 +126,12 @@ export default function Opportunities() {
     updateStatus,
   } = useOpportunities(company?.id);
 
+  // Austin permits — fetched client-side, merged into the feed
+  const {
+    permits: austinPermits,
+    refresh: refreshAustinPermits,
+  } = useAustinPermits(company?.id, settings);
+
   // UI state
   const [view,           setView]           = useState<"feed" | "pipeline">("feed");
   const [activeFilter,   setActiveFilter]   = useState("all");
@@ -150,8 +157,10 @@ export default function Opportunities() {
 
   const primaryTrade = localTrades[0] || company?.trades?.[0] || "General";
 
-  // Derived counts
-  const visible      = opportunities;
+  // Merge DB opportunities with client-side Austin permits (deduplicate by source_id)
+  const dbSourceIds = new Set(opportunities.map((o) => o.source_id).filter(Boolean));
+  const newAustinPermits = austinPermits.filter((p) => !dbSourceIds.has(p.source_id));
+  const visible = [...opportunities, ...newAustinPermits];
   const newCount     = visible.filter((o) => o.status === "new").length;
   const savedCount   = visible.filter((o) => o.status === "saved").length;
   const companyCount = visible.filter((o) => o.card_type === "company" && o.source !== "permit").length;
@@ -192,6 +201,7 @@ export default function Opportunities() {
     });
     setSettingsOpen(false);
     generate(true); // regenerate with new settings
+    refreshAustinPermits();
   };
 
   const template = outreachTarget
