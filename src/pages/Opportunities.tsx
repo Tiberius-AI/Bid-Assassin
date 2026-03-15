@@ -15,6 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useOpportunities, type DbOpportunity, type OppStatus, type PermitMetadata } from "@/hooks/useOpportunities";
 import { useAustinPermits } from "@/hooks/useAustinPermits";
+import { useSanAntonioPermits } from "@/hooks/useSanAntonioPermits";
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -135,6 +136,12 @@ export default function Opportunities() {
     refresh: refreshAustinPermits,
   } = useAustinPermits(company?.id, settings);
 
+  // San Antonio permits — same pattern, CSV via PapaParse
+  const {
+    permits: saPermits,
+    refresh: refreshSaPermits,
+  } = useSanAntonioPermits(company?.id, settings);
+
   // UI state
   const [view,           setView]           = useState<"feed" | "pipeline">("feed");
   const [visibleCount, setVisibleCount] = useState(20);
@@ -161,32 +168,35 @@ export default function Opportunities() {
 
   const primaryTrade = localTrades[0] || company?.trades?.[0] || "General";
 
-  // Merge DB opportunities with client-side Austin permits (today view only)
-  const newAustinPermits = useMemo(() => {
+  // Merge DB opportunities with client-side permits (today view only)
+  const newClientPermits = useMemo(() => {
     if (dateFilter !== "today") return [];
     const dbSourceIds = new Set(opportunities.map((o) => o.source_id).filter(Boolean));
-    return austinPermits.filter((p) => !dbSourceIds.has(p.source_id));
-  }, [opportunities, austinPermits, dateFilter]);
+    return [
+      ...austinPermits.filter((p) => !dbSourceIds.has(p.source_id)),
+      ...saPermits.filter((p) => !dbSourceIds.has(p.source_id)),
+    ];
+  }, [opportunities, austinPermits, saPermits, dateFilter]);
 
   // Persist new client-side permits to DB (so status updates work via real UUIDs)
   const persistedRef = useRef(new Set<string>());
   useEffect(() => {
-    if (newAustinPermits.length === 0) return;
-    const toInsert = newAustinPermits.filter((p) => p.source_id && !persistedRef.current.has(p.source_id));
+    if (newClientPermits.length === 0) return;
+    const toInsert = newClientPermits.filter((p) => p.source_id && !persistedRef.current.has(p.source_id));
     if (toInsert.length === 0) return;
     toInsert.forEach((p) => { if (p.source_id) persistedRef.current.add(p.source_id); });
     insertPermits(toInsert);
-  }, [newAustinPermits, insertPermits]);
+  }, [newClientPermits, insertPermits]);
 
   // Combined + sorted feed: permits first, then by score descending
   const visible = useMemo(() => {
-    const combined = [...opportunities, ...newAustinPermits];
+    const combined = [...opportunities, ...newClientPermits];
     return combined.sort((a, b) => {
       if (a.source === "permit" && b.source !== "permit") return -1;
       if (a.source !== "permit" && b.source === "permit") return 1;
       return b.match_score - a.match_score;
     });
-  }, [opportunities, newAustinPermits]);
+  }, [opportunities, newClientPermits]);
 
   const newCount     = visible.filter((o) => o.status === "new").length;
   const savedCount   = visible.filter((o) => o.status === "saved").length;
@@ -236,6 +246,7 @@ export default function Opportunities() {
     setSettingsOpen(false);
     generate(true); // regenerate with new settings
     refreshAustinPermits();
+    refreshSaPermits();
   };
 
   const template = outreachTarget
