@@ -42,7 +42,7 @@ export default function AppLayout() {
     <>
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-200">
-        <img src="/images/logo2a.svg" alt="Bid Assassin" className="h-8 w-auto" />
+        <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-8 w-auto" />
       </div>
 
       {/* Nav Links */}
