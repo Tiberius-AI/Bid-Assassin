@@ -119,10 +119,10 @@ export default function ManualBuild({ company, initialValues, onSave }: ManualBu
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       {initialValues?.sourceRef && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-center gap-2">
+        <div className="mb-4 px-4 py-3 rounded-lg bg-teal-50 border border-teal-200 text-sm text-teal-900 flex items-center gap-2">
           <span className="font-semibold">Federal Opportunity Pre-filled</span>
-          <span className="text-red-600">&mdash;</span>
-          <span className="text-red-700">{initialValues.sourceRef}</span>
+          <span className="text-teal-700">&mdash;</span>
+          <span className="text-teal-800">{initialValues.sourceRef}</span>
         </div>
       )}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 space-y-6">
@@ -242,7 +242,7 @@ export default function ManualBuild({ company, initialValues, onSave }: ManualBu
           <Button
             onClick={handleGenerate}
             disabled={generating || !scopeNotes.trim()}
-            className="gap-2 bg-red-600 hover:bg-red-700"
+            className="gap-2 bg-teal-700 hover:bg-teal-800"
           >
             {generating ? (
               <>

@@ -192,7 +192,7 @@ export default function Onboarding() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
-          <Crosshair className="h-6 w-6 text-red-600" />
+          <Crosshair className="h-6 w-6 text-teal-700" />
           <span className="font-bold text-gray-900 text-lg">Bid Assassin</span>
           <span className="text-gray-400 ml-2">Setup</span>
         </div>
@@ -207,9 +207,9 @@ export default function Onboarding() {
                 <div
                   className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
                     i < step
-                      ? "bg-red-600 text-white"
+                      ? "bg-teal-700 text-white"
                       : i === step
-                      ? "bg-red-100 text-red-600 border-2 border-red-600"
+                      ? "bg-teal-100 text-teal-700 border-2 border-teal-700"
                       : "bg-gray-100 text-gray-400"
                   }`}
                 >
@@ -456,7 +456,7 @@ export default function Onboarding() {
                         onClick={() => setProposalTone(tone)}
                         className={`px-4 py-3 rounded-lg border text-sm capitalize transition-colors ${
                           proposalTone === tone
-                            ? "border-red-600 bg-red-50 text-red-700 font-medium"
+                            ? "border-teal-700 bg-teal-50 text-teal-800 font-medium"
                             : "border-gray-200 text-gray-700 hover:bg-gray-50"
                         }`}
                       >
@@ -503,7 +503,7 @@ export default function Onboarding() {
               <Button
                 onClick={() => setStep((s) => s + 1)}
                 disabled={!canAdvance()}
-                className="gap-1 bg-red-600 hover:bg-red-700"
+                className="gap-1 bg-teal-700 hover:bg-teal-800"
               >
                 Next <ChevronRight className="h-4 w-4" />
               </Button>
@@ -511,7 +511,7 @@ export default function Onboarding() {
               <Button
                 onClick={handleFinish}
                 disabled={saving}
-                className="gap-1 bg-red-600 hover:bg-red-700"
+                className="gap-1 bg-teal-700 hover:bg-teal-800"
               >
                 {saving ? "Saving..." : "Finish Setup"}
                 {!saving && <Check className="h-4 w-4" />}

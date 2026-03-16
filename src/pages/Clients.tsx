@@ -118,7 +118,7 @@ export default function Clients() {
             Manage your GCs, property managers, and owners.
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="gap-2 bg-red-600 hover:bg-red-700">
+        <Button onClick={() => setShowForm(true)} className="gap-2 bg-teal-700 hover:bg-teal-800">
           <Plus className="h-4 w-4" /> Add Client
         </Button>
       </div>
@@ -170,7 +170,7 @@ export default function Clients() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={saving || !name.trim()} className="bg-red-600 hover:bg-red-700">
+                <Button onClick={handleCreate} disabled={saving || !name.trim()} className="bg-teal-700 hover:bg-teal-800">
                   {saving ? "Saving..." : "Add Client"}
                 </Button>
               </div>
@@ -189,7 +189,7 @@ export default function Clients() {
           <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No clients yet</h3>
           <p className="text-sm text-gray-500 mb-4">Add your first client to start tracking relationships.</p>
-          <Button onClick={() => setShowForm(true)} className="gap-2 bg-red-600 hover:bg-red-700">
+          <Button onClick={() => setShowForm(true)} className="gap-2 bg-teal-700 hover:bg-teal-800">
             <Plus className="h-4 w-4" /> Add Client
           </Button>
         </div>
@@ -208,7 +208,7 @@ export default function Clients() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[client.relationship_status]}`}>
                     {client.relationship_status}
                   </span>
-                  <button onClick={() => handleDelete(client.id)} className="text-gray-400 hover:text-red-500">
+                  <button onClick={() => handleDelete(client.id)} className="text-gray-400 hover:text-teal-600">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>

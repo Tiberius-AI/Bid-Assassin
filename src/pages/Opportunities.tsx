@@ -257,7 +257,7 @@ export default function Opportunities() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="w-6 h-6 text-red-600 animate-spin" />
+        <Loader2 className="w-6 h-6 text-teal-700 animate-spin" />
         <p className="text-sm text-gray-500">Loading your opportunities…</p>
       </div>
     );
@@ -266,7 +266,7 @@ export default function Opportunities() {
   if (generating && opportunities.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
-        <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-teal-700 animate-spin" />
         <p className="text-base font-semibold text-gray-900">Finding leads near {city}…</p>
         <p className="text-sm text-gray-500">Searching Google Places + LinkedIn. This takes about 10–15 seconds.</p>
       </div>
@@ -277,11 +277,11 @@ export default function Opportunities() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
-          <X className="w-6 h-6 text-red-600" />
+          <X className="w-6 h-6 text-red-500" />
         </div>
         <p className="text-base font-semibold text-gray-900">Couldn't load opportunities</p>
         <p className="text-sm text-gray-500 max-w-sm">{error}</p>
-        <Button onClick={() => generate(true)} className="bg-red-600 hover:bg-red-700 mt-2">
+        <Button onClick={() => generate(true)} className="bg-teal-700 hover:bg-teal-800 mt-2">
           Try Again
         </Button>
       </div>
@@ -301,7 +301,7 @@ export default function Opportunities() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-gray-900">Opportunities</h1>
               {newCount > 0 && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-700 text-white">
                   {newCount} new today
                 </span>
               )}
@@ -347,7 +347,7 @@ export default function Opportunities() {
               onClick={() => setSettingsOpen(!settingsOpen)}
               className={`p-2 rounded-lg border transition-colors ${
                 settingsOpen
-                  ? "border-red-300 bg-red-50 text-red-600"
+                  ? "border-teal-300 bg-teal-50 text-teal-700"
                   : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
@@ -381,12 +381,12 @@ export default function Opportunities() {
                 key={r.day}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   i === TODAY_IDX
-                    ? "bg-red-600 text-white border-red-600"
+                    ? "bg-teal-700 text-white border-teal-700"
                     : "bg-gray-50 text-gray-500 border-gray-200"
                 }`}
               >
                 <span className="font-bold">{r.day}</span>
-                <span className={`ml-1.5 ${i === TODAY_IDX ? "text-red-100" : "text-gray-400"}`}>
+                <span className={`ml-1.5 ${i === TODAY_IDX ? "text-teal-100" : "text-gray-400"}`}>
                   {r.company}
                 </span>
               </div>
@@ -429,7 +429,7 @@ export default function Opportunities() {
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="text-sm font-medium text-gray-700">Service Radius</label>
-              <span className="text-sm font-bold text-red-600">{localRadius} miles</span>
+              <span className="text-sm font-bold text-teal-700">{localRadius} miles</span>
             </div>
             <Slider
               value={[localRadius]} min={10} max={150} step={5}
@@ -452,7 +452,7 @@ export default function Opportunities() {
                   }
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                     localTrades.includes(t)
-                      ? "bg-red-600 text-white border-red-600"
+                      ? "bg-teal-700 text-white border-teal-700"
                       : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                   }`}
                 >
@@ -540,7 +540,7 @@ export default function Opportunities() {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleSaveSettings} className="bg-red-600 hover:bg-red-700" disabled={generating}>
+            <Button onClick={handleSaveSettings} className="bg-teal-700 hover:bg-teal-800" disabled={generating}>
               {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Refreshing…</> : "Save & Refresh Feed"}
             </Button>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
@@ -650,7 +650,7 @@ export default function Opportunities() {
                           </span>
                           <button
                             onClick={() => openOutreach(opp)}
-                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                            className="text-xs text-teal-700 hover:text-teal-800 font-medium"
                           >
                             Reach Out
                           </button>
@@ -819,7 +819,7 @@ export default function Opportunities() {
                 </Button>
 
                 {outreachChannel === "email" && (
-                  <Button size="sm" className="flex-1 bg-red-600 hover:bg-red-700"
+                  <Button size="sm" className="flex-1 bg-teal-700 hover:bg-teal-800"
                     onClick={() => {
                       window.open(`mailto:?subject=${encodeURIComponent(template.subject ?? "")}&body=${encodeURIComponent(template.body)}`);
                       updateStatus(outreachTarget.id, "reached_out");
@@ -829,7 +829,7 @@ export default function Opportunities() {
                   </Button>
                 )}
                 {outreachChannel === "sms" && (
-                  <Button size="sm" className="flex-1 bg-red-600 hover:bg-red-700"
+                  <Button size="sm" className="flex-1 bg-teal-700 hover:bg-teal-800"
                     onClick={() => {
                       const digits = (outreachTarget.phone ?? "").replace(/\D/g, "");
                       window.open(`sms:${digits}?&body=${encodeURIComponent(template.body)}`);
@@ -842,7 +842,7 @@ export default function Opportunities() {
                 {outreachChannel === "phone" && outreachTarget.phone && (
                   <a href={`tel:${outreachTarget.phone}`} className="flex-1"
                     onClick={() => { updateStatus(outreachTarget.id, "reached_out"); setOutreachTarget(null); }}>
-                    <Button size="sm" className="w-full bg-red-600 hover:bg-red-700">
+                    <Button size="sm" className="w-full bg-teal-700 hover:bg-teal-800">
                       Call {outreachTarget.phone} <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                     </Button>
                   </a>
@@ -905,7 +905,7 @@ function OppCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               {opp.is_new && opp.status === "new" && (
-                <span className="inline-block text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded mr-1.5 align-middle">
+                <span className="inline-block text-[10px] font-bold bg-teal-700 text-white px-1.5 py-0.5 rounded mr-1.5 align-middle">
                   NEW
                 </span>
               )}
@@ -1036,14 +1036,14 @@ function OppCard({
           <div className="flex items-center gap-3 flex-wrap">
             {opp.phone && (
               <a href={`tel:${opp.phone}`}
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 transition-colors">
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-teal-700 transition-colors">
                 <Phone className="h-3.5 w-3.5" /> {opp.phone}
               </a>
             )}
             {opp.website && (
               <a href={opp.website.startsWith("http") ? opp.website : `https://${opp.website}`}
                 target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 transition-colors">
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-teal-700 transition-colors">
                 <Globe className="h-3.5 w-3.5" /> {opp.website.replace(/^https?:\/\//, "").split("/")[0]}
               </a>
             )}
@@ -1105,7 +1105,7 @@ function OppCard({
         )}
         <button
           onClick={() => onReachOut()}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors">
           <MessageSquare className="h-3.5 w-3.5" /> Reach Out
         </button>
       </div>

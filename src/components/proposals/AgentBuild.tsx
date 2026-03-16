@@ -317,7 +317,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
       <div className="flex items-center justify-center h-full">
         <div className="max-w-md w-full bg-white rounded-lg border border-gray-200 shadow-sm p-8">
           <div className="flex items-center gap-3 mb-6">
-            <Search className="h-6 w-6 text-red-600 animate-pulse" />
+            <Search className="h-6 w-6 text-teal-700 animate-pulse" />
             <h2 className="text-lg font-semibold text-gray-900">
               {phase === "researching"
                 ? "Researching client..."
@@ -330,7 +330,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
                 {step.done ? (
                   <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
                 ) : i === researchSteps.findIndex((s) => !s.done) ? (
-                  <Loader2 className="h-5 w-5 text-red-600 animate-spin shrink-0" />
+                  <Loader2 className="h-5 w-5 text-teal-700 animate-spin shrink-0" />
                 ) : (
                   <Circle className="h-5 w-5 text-gray-300 shrink-0" />
                 )}
@@ -381,7 +381,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
       <div className="flex flex-col h-full max-w-3xl mx-auto p-6 overflow-y-auto">
         {/* Agent message */}
         <div className="flex gap-3 mb-6">
-          <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
             <Bot className="h-4 w-4" />
           </div>
           <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 max-w-[85%]">
@@ -479,7 +479,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
                   <button
                     type="button"
                     onClick={() => removePhoto(url)}
-                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-teal-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-teal-800"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -528,7 +528,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
           <Button
             onClick={() => startResearch(savedIntakeRef.current, savedMessagesRef.current)}
             disabled={logoUploading || photosUploading}
-            className="bg-red-600 hover:bg-red-700 gap-2"
+            className="bg-teal-700 hover:bg-teal-800 gap-2"
           >
             {logoUploading || photosUploading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -553,7 +553,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                 msg.role === "assistant"
-                  ? "bg-red-100 text-red-600"
+                  ? "bg-teal-100 text-teal-700"
                   : "bg-gray-100 text-gray-600"
               }`}
             >
@@ -567,7 +567,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
               className={`max-w-[80%] rounded-lg px-4 py-3 text-sm ${
                 msg.role === "assistant"
                   ? "bg-white border border-gray-200 text-gray-800"
-                  : "bg-red-600 text-white"
+                  : "bg-teal-700 text-white"
               }`}
             >
               <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -576,7 +576,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
         ))}
         {sending && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
               <Bot className="h-4 w-4" />
             </div>
             <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
@@ -600,7 +600,7 @@ ${research.tailoring_insights?.map((t) => `- ${t}`).join("\n") || ""}
           <Button
             onClick={sendMessage}
             disabled={sending || !input.trim()}
-            className="bg-red-600 hover:bg-red-700 px-3"
+            className="bg-teal-700 hover:bg-teal-800 px-3"
           >
             <Send className="h-4 w-4" />
           </Button>

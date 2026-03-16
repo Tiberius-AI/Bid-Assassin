@@ -20,7 +20,12 @@
       "Bash(vercel --version)",
       "Bash(git init)",
       "Bash(gh auth status)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(supabase --version)",
+      "Bash(npx supabase:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

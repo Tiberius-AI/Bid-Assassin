@@ -43,7 +43,7 @@ export default function AppLayout() {
     <>
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-200">
-        <Crosshair className="h-6 w-6 text-red-600 shrink-0" />
+        <Crosshair className="h-6 w-6 text-teal-700 shrink-0" />
         <span className="font-bold text-gray-900 text-lg">Bid Assassin</span>
       </div>
 
@@ -57,7 +57,7 @@ export default function AppLayout() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-gray-100 text-gray-900 border-l-2 border-red-600 -ml-[2px] pl-[14px]"
+                  ? "bg-gray-100 text-gray-900 border-l-2 border-teal-700 -ml-[2px] pl-[14px]"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               }`
             }
@@ -65,7 +65,7 @@ export default function AppLayout() {
             <item.icon className="h-5 w-5 shrink-0" />
             <span className="flex-1">{item.label}</span>
             {item.badge && newMatchCount > 0 && (
-              <span className="ml-auto inline-flex items-center justify-center text-xs font-bold px-1.5 py-0.5 rounded-full bg-red-600 text-white min-w-[18px]">
+              <span className="ml-auto inline-flex items-center justify-center text-xs font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white min-w-[18px]">
                 {newMatchCount > 99 ? "99+" : newMatchCount}
               </span>
             )}
@@ -76,7 +76,7 @@ export default function AppLayout() {
       {/* User Section */}
       <div className="border-t border-gray-200 px-3 py-3">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-medium">
+          <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-medium">
             {(profile?.full_name || profile?.email || "U")[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -140,7 +140,7 @@ export default function AppLayout() {
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
-              <div className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-medium">
+              <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-medium">
                 {(profile?.full_name || profile?.email || "U")[0].toUpperCase()}
               </div>
               <span className="hidden sm:inline">{profile?.full_name || "User"}</span>
@@ -162,7 +162,7 @@ export default function AppLayout() {
                   </button>
                   <button
                     onClick={handleSignOut}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 flex items-center gap-2"
                   >
                     <LogOut className="h-4 w-4" /> Sign Out
                   </button>

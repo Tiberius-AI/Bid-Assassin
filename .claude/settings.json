@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs sed:*)",
+      "Bash(head -10 grep -n \"error\\\\|Error\\\\|teal\" /c/Users/monet/OneDrive/Documents/0_0_TIBERIUS_APPS/BID_ASSASSIN2/src/pages/LoadingPage.tsx)"
+    ]
+  }
+}

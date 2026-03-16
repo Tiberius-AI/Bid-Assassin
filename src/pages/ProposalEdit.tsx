@@ -227,7 +227,7 @@ export default function ProposalEdit() {
   if (error || !proposal) {
     return (
       <div className="p-6 text-center">
-        <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
+        <AlertCircle className="h-10 w-10 text-teal-500 mx-auto mb-3" />
         <p className="text-gray-500">{error || "Proposal not found"}</p>
         <Button variant="outline" onClick={() => navigate("/proposals")} className="mt-4">
           Back to Proposals
@@ -249,7 +249,7 @@ export default function ProposalEdit() {
         </Button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">{proposal.proposal_number}</span>
-          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-red-600 hover:bg-red-700">
+          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-teal-700 hover:bg-teal-800">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Changes"}
           </Button>
@@ -297,7 +297,7 @@ export default function ProposalEdit() {
                   <button
                     type="button"
                     onClick={() => setClientLogoUrl(null)}
-                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700"
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-teal-700 text-white flex items-center justify-center hover:bg-teal-800"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -406,7 +406,7 @@ export default function ProposalEdit() {
                         type="button"
                         onClick={() => removeLineItem(i)}
                         disabled={lineItems.length === 1}
-                        className="text-gray-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="text-gray-400 hover:text-teal-700 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -474,7 +474,7 @@ export default function ProposalEdit() {
                   <button
                     type="button"
                     onClick={() => removePhoto(url)}
-                    className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                    className="absolute top-1 right-1 h-6 w-6 rounded-full bg-teal-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-teal-800"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -568,7 +568,7 @@ export default function ProposalEdit() {
 
         {/* Bottom save */}
         <div className="flex justify-end pb-4">
-          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-red-600 hover:bg-red-700">
+          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-teal-700 hover:bg-teal-800">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Changes"}
           </Button>

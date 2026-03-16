@@ -71,7 +71,7 @@ export default function ProposalSign() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="text-center max-w-sm">
-          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 text-teal-500 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Link Not Found</h2>
           <p className="text-sm text-gray-500">{error}</p>
         </div>
@@ -234,10 +234,10 @@ export default function ProposalSign() {
             className="w-full"
           />
           {error && (
-            <p className="text-xs text-red-500 mt-2">{error}</p>
+            <p className="text-xs text-teal-600 mt-2">{error}</p>
           )}
           <Button
-            className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white"
+            className="mt-4 w-full bg-teal-700 hover:bg-teal-800 text-white"
             disabled={!signature || signing}
             onClick={handleSign}
           >

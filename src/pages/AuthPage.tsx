@@ -74,7 +74,7 @@ export function AuthPage() {
             <Tabs defaultValue="login" className="w-full">
               <div className="flex flex-col items-center gap-2 mb-6 text-center">
                 <div className="flex items-center gap-2">
-                  <Crosshair className="h-8 w-8 text-red-600" />
+                  <Crosshair className="h-8 w-8 text-teal-700" />
                   <h1 className="text-2xl font-bold text-gray-900">Bid Assassin</h1>
                 </div>
                 <p className="text-gray-500 text-sm">
@@ -109,7 +109,7 @@ export function AuthPage() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
+                  <Button type="submit" className="w-full bg-teal-700 hover:bg-teal-800" disabled={loading}>
                     {loading ? "Signing In..." : "Sign In"}
                   </Button>
                 </form>
@@ -150,7 +150,7 @@ export function AuthPage() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
+                  <Button type="submit" className="w-full bg-teal-700 hover:bg-teal-800" disabled={loading}>
                     {loading ? "Creating Account..." : "Create Account"}
                   </Button>
                   <p className="text-xs text-gray-500 text-center">
@@ -164,7 +164,7 @@ export function AuthPage() {
       </div>
       <div className="relative hidden lg:flex items-center justify-center bg-gray-50">
         <div className="max-w-md p-8 text-center">
-          <Crosshair className="h-16 w-16 text-red-600 mx-auto mb-6" />
+          <Crosshair className="h-16 w-16 text-teal-700 mx-auto mb-6" />
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             Win More Bids. Faster.
           </h2>

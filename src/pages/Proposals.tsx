@@ -11,7 +11,7 @@ const STATUS_STYLE: Record<string, string> = {
   sent:     "bg-blue-100 text-blue-700",
   viewed:   "bg-yellow-100 text-yellow-700",
   accepted: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
+  rejected: "bg-teal-100 text-teal-800",
   expired:  "bg-gray-100 text-gray-500",
 };
 
@@ -54,16 +54,16 @@ export default function Proposals() {
           </p>
         </div>
         <Link to="/proposals/new">
-          <Button className="gap-2 bg-red-600 hover:bg-red-700">
+          <Button className="gap-2 bg-teal-700 hover:bg-teal-800">
             <Plus className="h-4 w-4" /> New Proposal
           </Button>
         </Link>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-teal-600 shrink-0" />
+          <p className="text-sm text-teal-800">{error}</p>
         </div>
       )}
 
@@ -81,7 +81,7 @@ export default function Proposals() {
             Create your first proposal to get started.
           </p>
           <Link to="/proposals/new">
-            <Button className="gap-2 bg-red-600 hover:bg-red-700">
+            <Button className="gap-2 bg-teal-700 hover:bg-teal-800">
               <Plus className="h-4 w-4" /> Create Proposal
             </Button>
           </Link>
@@ -150,7 +150,7 @@ export default function Proposals() {
                     <button
                       onClick={(e) => handleDelete(proposal.id, e)}
                       disabled={deletingId === proposal.id}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                      className="text-gray-400 hover:text-teal-600 transition-colors p-1"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

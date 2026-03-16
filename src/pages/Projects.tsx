@@ -18,7 +18,7 @@ const COLUMNS = [
   { key: "reviewing", label: "Reviewing", color: "border-yellow-400" },
   { key: "bid_submitted", label: "Bid Submitted", color: "border-blue-400" },
   { key: "won", label: "Won", color: "border-green-400" },
-  { key: "lost", label: "Lost", color: "border-red-400" },
+  { key: "lost", label: "Lost", color: "border-teal-400" },
 ];
 
 export default function Projects() {
@@ -120,7 +120,7 @@ export default function Projects() {
         </div>
         <Button
           onClick={() => setShowForm(true)}
-          className="gap-2 bg-red-600 hover:bg-red-700"
+          className="gap-2 bg-teal-700 hover:bg-teal-800"
         >
           <Plus className="h-4 w-4" /> Add Project
         </Button>
@@ -167,7 +167,7 @@ export default function Projects() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={saving || !name.trim()} className="bg-red-600 hover:bg-red-700">
+                <Button onClick={handleCreate} disabled={saving || !name.trim()} className="bg-teal-700 hover:bg-teal-800">
                   {saving ? "Saving..." : "Create"}
                 </Button>
               </div>

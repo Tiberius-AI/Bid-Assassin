@@ -53,8 +53,8 @@ export default function Dashboard() {
                 {loading ? "-" : activeProposals.length}
               </p>
             </div>
-            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-              <FileText className="h-5 w-5 text-red-600" />
+            <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
+              <FileText className="h-5 w-5 text-teal-700" />
             </div>
           </div>
         </div>
@@ -97,7 +97,7 @@ export default function Dashboard() {
           <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-2">
             <Link to="/proposals/new">
-              <Button className="w-full justify-start gap-2 bg-red-600 hover:bg-red-700">
+              <Button className="w-full justify-start gap-2 bg-teal-700 hover:bg-teal-800">
                 <Plus className="h-4 w-4" /> New Proposal
               </Button>
             </Link>
@@ -110,7 +110,7 @@ export default function Dashboard() {
             <h2 className="font-semibold text-gray-900">Recent Proposals</h2>
             <Link
               to="/proposals"
-              className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
+              className="text-sm text-teal-700 hover:text-teal-800 flex items-center gap-1"
             >
               View all <ArrowRight className="h-3 w-3" />
             </Link>
@@ -164,7 +164,7 @@ export default function Dashboard() {
                           : proposal.status === "viewed"
                           ? "bg-yellow-100 text-yellow-700"
                           : proposal.status === "rejected"
-                          ? "bg-red-100 text-red-700"
+                          ? "bg-teal-100 text-teal-800"
                           : "bg-gray-100 text-gray-600"
                       }`}
                     >

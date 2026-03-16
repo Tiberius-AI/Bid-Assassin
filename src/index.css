@@ -22,31 +22,31 @@ button {
   --color-card-foreground: oklch(0.145 0.014 285.823);
   --color-popover: oklch(1 0 0);
   --color-popover-foreground: oklch(0.145 0.014 285.823);
-  --color-primary: oklch(0.577 0.245 27.325);
+  --color-primary: oklch(0.52 0.105 181);       /* deep teal #0f766e */
   --color-primary-foreground: oklch(1 0 0);
-  --color-secondary: oklch(0.957 0.003 264.542);
-  --color-secondary-foreground: oklch(0.145 0.014 285.823);
+  --color-secondary: oklch(0.554 0.018 264);    /* slate-500 #64748b */
+  --color-secondary-foreground: oklch(1 0 0);
   --color-muted: oklch(0.978 0.001 264.542);
   --color-muted-foreground: oklch(0.556 0.019 264.542);
-  --color-accent: oklch(0.957 0.003 264.542);
-  --color-accent-foreground: oklch(0.145 0.014 285.823);
+  --color-accent: oklch(0.73 0.17 70);          /* amber-600 #d97706 */
+  --color-accent-foreground: oklch(1 0 0);
   --color-destructive: oklch(0.637 0.237 25.331);
   --color-border: oklch(0.922 0.004 264.542);
   --color-input: oklch(0.922 0.004 264.542);
-  --color-ring: oklch(0.577 0.245 27.325);
-  --color-chart-1: oklch(0.577 0.245 27.325);
+  --color-ring: oklch(0.52 0.105 181);          /* teal ring */
+  --color-chart-1: oklch(0.52 0.105 181);
   --color-chart-2: oklch(0.588 0.166 142.495);
   --color-chart-3: oklch(0.753 0.171 70.08);
   --color-chart-4: oklch(0.623 0.214 259.815);
   --color-chart-5: oklch(0.585 0.233 277.117);
   --color-sidebar: oklch(1 0 0);
   --color-sidebar-foreground: oklch(0.373 0.014 261.692);
-  --color-sidebar-primary: oklch(0.577 0.245 27.325);
+  --color-sidebar-primary: oklch(0.52 0.105 181);
   --color-sidebar-primary-foreground: oklch(1 0 0);
   --color-sidebar-accent: oklch(0.957 0.003 264.542);
   --color-sidebar-accent-foreground: oklch(0.145 0.014 285.823);
   --color-sidebar-border: oklch(0.922 0.004 264.542);
-  --color-sidebar-ring: oklch(0.577 0.245 27.325);
+  --color-sidebar-ring: oklch(0.52 0.105 181);
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
@@ -70,5 +70,14 @@ button {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  }
+  .card-shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   }
 }

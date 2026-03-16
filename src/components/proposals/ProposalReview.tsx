@@ -194,7 +194,7 @@ export default function ProposalReview({
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="gap-1 bg-red-600 hover:bg-red-700"
+              className="gap-1 bg-teal-700 hover:bg-teal-800"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -470,7 +470,7 @@ export default function ProposalReview({
         <div className="fixed right-0 top-14 bottom-0 w-96 bg-white border-l border-gray-200 flex flex-col z-30">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
             <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-red-600" />
+              <Bot className="h-5 w-5 text-teal-700" />
               <span className="font-medium text-gray-900 text-sm">
                 Proposal Assistant
               </span>
@@ -497,7 +497,7 @@ export default function ProposalReview({
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                     msg.role === "assistant"
-                      ? "bg-red-100 text-red-600"
+                      ? "bg-teal-100 text-teal-700"
                       : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -511,7 +511,7 @@ export default function ProposalReview({
                   className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                     msg.role === "assistant"
                       ? "bg-gray-50 text-gray-800"
-                      : "bg-red-600 text-white"
+                      : "bg-teal-700 text-white"
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -520,7 +520,7 @@ export default function ProposalReview({
             ))}
             {chatSending && (
               <div className="flex gap-2">
-                <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
                   <Bot className="h-3 w-3" />
                 </div>
                 <div className="bg-gray-50 rounded-lg px-3 py-2">
@@ -546,7 +546,7 @@ export default function ProposalReview({
                 onClick={sendChatMessage}
                 disabled={chatSending || !chatInput.trim()}
                 size="sm"
-                className="bg-red-600 hover:bg-red-700 px-2"
+                className="bg-teal-700 hover:bg-teal-800 px-2"
               >
                 <Send className="h-4 w-4" />
               </Button>

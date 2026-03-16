@@ -250,7 +250,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={handleRemoveLogo}
                     disabled={logoUploading}
-                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700"
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-teal-700 text-white flex items-center justify-center hover:bg-teal-800"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -340,7 +340,7 @@ export default function SettingsPage() {
                     onClick={() => setProposalTone(tone)}
                     className={`px-4 py-2 rounded-lg border text-sm capitalize transition-colors ${
                       proposalTone === tone
-                        ? "border-red-600 bg-red-50 text-red-700 font-medium"
+                        ? "border-teal-700 bg-teal-50 text-teal-800 font-medium"
                         : "border-gray-200 text-gray-700 hover:bg-gray-50"
                     }`}
                   >
@@ -412,7 +412,7 @@ export default function SettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <Label>Hot Alert Threshold</Label>
-                    <span className="text-sm font-semibold text-red-600">{hotAlertThreshold}%</span>
+                    <span className="text-sm font-semibold text-teal-700">{hotAlertThreshold}%</span>
                   </div>
                   <p className="text-xs text-gray-500 mb-2">
                     Matches at or above this score trigger an immediate notification.
@@ -486,7 +486,7 @@ export default function SettingsPage() {
                 <Button
                   onClick={handleSaveNotifPrefs}
                   disabled={notifSaving}
-                  className="gap-2 bg-red-600 hover:bg-red-700"
+                  className="gap-2 bg-teal-700 hover:bg-teal-800"
                 >
                   {notifSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {notifSaving ? "Saving..." : "Save Notification Prefs"}
@@ -501,7 +501,7 @@ export default function SettingsPage() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="gap-2 bg-red-600 hover:bg-red-700"
+            className="gap-2 bg-teal-700 hover:bg-teal-800"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Settings"}

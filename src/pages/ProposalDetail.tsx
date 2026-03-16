@@ -47,7 +47,7 @@ const STATUS_CONFIG: Record<
   sent:     { color: "text-blue-700",  bg: "bg-blue-100",  icon: Send       },
   viewed:   { color: "text-yellow-700",bg: "bg-yellow-100",icon: Eye        },
   accepted: { color: "text-green-700", bg: "bg-green-100", icon: CheckCircle2 },
-  rejected: { color: "text-red-700",   bg: "bg-red-100",   icon: XCircle   },
+  rejected: { color: "text-teal-800",   bg: "bg-teal-100",   icon: XCircle   },
   expired:  { color: "text-gray-500",  bg: "bg-gray-100",  icon: Clock     },
 };
 
@@ -193,7 +193,7 @@ export default function ProposalDetail() {
   if (error || !proposal) {
     return (
       <div className="p-6 text-center">
-        <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
+        <AlertCircle className="h-10 w-10 text-teal-500 mx-auto mb-3" />
         <p className="text-gray-500">{error || "Proposal not found"}</p>
         <Button
           variant="outline"
@@ -264,7 +264,7 @@ export default function ProposalDetail() {
                             t.to === "accepted"
                               ? "text-green-700"
                               : t.to === "rejected"
-                              ? "text-red-600"
+                              ? "text-teal-700"
                               : "text-gray-700"
                           }`}
                         >
@@ -304,7 +304,7 @@ export default function ProposalDetail() {
 
           <Button
             onClick={handleDownloadPDF}
-            className="gap-1 bg-red-600 hover:bg-red-700"
+            className="gap-1 bg-teal-700 hover:bg-teal-800"
           >
             <Download className="h-4 w-4" /> Download PDF
           </Button>
@@ -337,7 +337,7 @@ export default function ProposalDetail() {
                   </p>
                 )}
                 {proposal.expires_at && (
-                  <p className={`text-xs mt-0.5 ${new Date(proposal.expires_at) < new Date() ? "text-red-500 font-medium" : "text-gray-400"}`}>
+                  <p className={`text-xs mt-0.5 ${new Date(proposal.expires_at) < new Date() ? "text-teal-600 font-medium" : "text-gray-400"}`}>
                     Valid until {new Date(proposal.expires_at).toLocaleDateString()}
                   </p>
                 )}
@@ -604,7 +604,7 @@ export default function ProposalDetail() {
                       : ""}
                   </p>
                   <button
-                    className="text-xs text-red-600 underline"
+                    className="text-xs text-teal-700 underline"
                     onClick={() => updateProposal({ contractor_signature: null, contractor_signed_at: null })}
                   >
                     Clear signature

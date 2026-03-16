@@ -157,18 +157,18 @@ export default function ProposalBuilder() {
                 onClick={() => setMode("manual")}
                 className={`flex flex-col items-center gap-2 p-6 rounded-lg border-2 transition-all ${
                   mode === "manual"
-                    ? "border-red-600 bg-red-50"
+                    ? "border-teal-700 bg-teal-50"
                     : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 <PenLine
                   className={`h-8 w-8 ${
-                    mode === "manual" ? "text-red-600" : "text-gray-400"
+                    mode === "manual" ? "text-teal-700" : "text-gray-400"
                   }`}
                 />
                 <span
                   className={`font-semibold text-lg ${
-                    mode === "manual" ? "text-red-600" : "text-gray-700"
+                    mode === "manual" ? "text-teal-700" : "text-gray-700"
                   }`}
                 >
                   Manual Build
@@ -182,18 +182,18 @@ export default function ProposalBuilder() {
                 onClick={() => setMode("agent")}
                 className={`flex flex-col items-center gap-2 p-6 rounded-lg border-2 transition-all ${
                   mode === "agent"
-                    ? "border-red-600 bg-red-50"
+                    ? "border-teal-700 bg-teal-50"
                     : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 <Bot
                   className={`h-8 w-8 ${
-                    mode === "agent" ? "text-red-600" : "text-gray-400"
+                    mode === "agent" ? "text-teal-700" : "text-gray-400"
                   }`}
                 />
                 <span
                   className={`font-semibold text-lg ${
-                    mode === "agent" ? "text-red-600" : "text-gray-700"
+                    mode === "agent" ? "text-teal-700" : "text-gray-700"
                   }`}
                 >
                   AI Agent
