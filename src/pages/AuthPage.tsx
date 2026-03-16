@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import supabase from "@/supabase";
 import { useSession } from "@/context/SessionContext";
-import { Crosshair } from "lucide-react";
 
 export function AuthPage() {
   const { session, profile } = useSession();
@@ -73,10 +72,7 @@ export function AuthPage() {
           <div className="w-full max-w-md p-8 pb-18 pt-12 rounded-lg border border-gray-200 shadow-sm">
             <Tabs defaultValue="login" className="w-full">
               <div className="flex flex-col items-center gap-2 mb-6 text-center">
-                <div className="flex items-center gap-2">
-                  <Crosshair className="h-8 w-8 text-teal-700" />
-                  <h1 className="text-2xl font-bold text-gray-900">Bid Assassin</h1>
-                </div>
+                <img src="/images/logo2a.svg" alt="Bid Assassin" className="h-10 w-auto" />
                 <p className="text-gray-500 text-sm">
                   AI-powered proposals for commercial subcontractors
                 </p>
@@ -164,7 +160,7 @@ export function AuthPage() {
       </div>
       <div className="relative hidden lg:flex items-center justify-center bg-gray-50">
         <div className="max-w-md p-8 text-center">
-          <Crosshair className="h-16 w-16 text-teal-700 mx-auto mb-6" />
+          <img src="/images/logo2a.svg" alt="Bid Assassin" className="h-14 w-auto mx-auto mb-6" />
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             Win More Bids. Faster.
           </h2>
