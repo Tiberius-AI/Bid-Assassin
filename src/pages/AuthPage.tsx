@@ -72,7 +72,7 @@ export function AuthPage() {
           <div className="w-full max-w-md p-8 pb-18 pt-12 rounded-lg border border-gray-200 shadow-sm">
             <Tabs defaultValue="login" className="w-full">
               <div className="flex flex-col items-center gap-2 mb-6 text-center">
-                <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-10 w-auto" />
+                <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-12 lg:h-16 w-auto" />
                 <p className="text-gray-500 text-sm">
                   AI-powered proposals for commercial subcontractors
                 </p>
@@ -160,7 +160,7 @@ export function AuthPage() {
       </div>
       <div className="relative hidden lg:flex items-center justify-center bg-gray-50">
         <div className="max-w-md p-8 text-center">
-          <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-14 w-auto mx-auto mb-6" />
+          <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-20 w-auto mx-auto mb-6" />
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             Win More Bids. Faster.
           </h2>

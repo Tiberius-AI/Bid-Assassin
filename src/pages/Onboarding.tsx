@@ -191,7 +191,7 @@ export default function Onboarding() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
-          <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-7 w-auto" />
+          <img src="/images/logo2.jpg" alt="Bid Assassin" className="h-9 lg:h-11 w-auto" />
           <span className="text-gray-400 ml-2">Setup</span>
         </div>
       </div>
