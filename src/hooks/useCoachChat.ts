@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import supabase from "@/supabase";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/config";
 
 export interface CoachMessage {
   role: "user" | "assistant";
@@ -163,40 +162,17 @@ export function useCoachChat(coachType = "estimator") {
           content: userMessage,
         });
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error("No active session");
+        const { data: fnData, error: fnError } = await supabase.functions.invoke("ai-coach", {
+          body: {
+            coach_type: coachType,
+            messages: newMessages,
+            proposal_context: proposalContext,
+            conversation_id: convId,
+          },
+        });
 
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/ai-coach`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
-              coach_type: coachType,
-              messages: newMessages,
-              proposal_context: proposalContext,
-              conversation_id: convId,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errText = await response.text();
-          let errMsg = `HTTP ${response.status}`;
-          try {
-            const errData = JSON.parse(errText);
-            errMsg = errData.error || errData.message || errData.msg || JSON.stringify(errData);
-          } catch {
-            errMsg = errText || errMsg;
-          }
-          throw new Error(errMsg);
-        }
-
-        const data = await response.json();
+        if (fnError) throw new Error(fnError.message);
+        const data = fnData;
         const updatedMessages: CoachMessage[] = [
           ...newMessages,
           { role: "assistant", content: data.message },
