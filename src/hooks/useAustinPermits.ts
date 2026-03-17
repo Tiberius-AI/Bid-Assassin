@@ -206,10 +206,16 @@ function scoreAndShape(
     const lng = parseFloat(row.longitude ?? "");
     const hasCoords = !isNaN(lat) && !isNaN(lng);
 
+    // Require a known company center — never show permits when location is unset
+    if (!center_lat || !center_lng) continue;
+
     let distMiles: number | null = null;
-    if (hasCoords && center_lat && center_lng) {
+    if (hasCoords) {
       distMiles = parseFloat(haversine(center_lat, center_lng, lat, lng).toFixed(1));
       if (distMiles > radius) continue;
+    } else {
+      // No permit coords — skip rather than show to potentially wrong user
+      continue;
     }
 
     const permitType = row.permit_type_desc ?? row.permittype ?? "Commercial Permit";

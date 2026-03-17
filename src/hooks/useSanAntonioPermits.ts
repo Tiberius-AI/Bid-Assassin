@@ -268,10 +268,15 @@ function scoreAndShape(
       ? statePlaneToLatLng(xFeet, yFeet)
       : null;
 
+    // Require a known company center — never show permits when location is unset
+    if (!center_lat || !center_lng) continue;
+
     let distMiles: number | null = null;
-    if (coords && center_lat && center_lng) {
+    if (coords) {
       distMiles = parseFloat(haversine(center_lat, center_lng, coords.lat, coords.lng).toFixed(1));
       if (distMiles > radius) continue;
+    } else {
+      continue;
     }
 
     const rawPermitType = row["PERMIT TYPE"] || "Commercial Permit";
