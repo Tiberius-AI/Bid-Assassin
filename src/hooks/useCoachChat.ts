@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import supabase from "@/supabase";
+import { SUPABASE_URL } from "@/config";
 
 export interface CoachMessage {
   role: "user" | "assistant";
@@ -166,7 +167,7 @@ export function useCoachChat(coachType = "estimator") {
         if (!session) throw new Error("No active session");
 
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-coach`,
+          `${SUPABASE_URL}/functions/v1/ai-coach`,
           {
             method: "POST",
             headers: {
@@ -183,8 +184,15 @@ export function useCoachChat(coachType = "estimator") {
         );
 
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to get response");
+          const errText = await response.text();
+          let errMsg = `HTTP ${response.status}`;
+          try {
+            const errData = JSON.parse(errText);
+            errMsg = errData.error || errData.message || errData.msg || JSON.stringify(errData);
+          } catch {
+            errMsg = errText || errMsg;
+          }
+          throw new Error(errMsg);
         }
 
         const data = await response.json();
