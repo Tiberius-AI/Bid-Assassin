@@ -171,7 +171,15 @@ export function useCoachChat(coachType = "estimator") {
           },
         });
 
-        if (fnError) throw new Error(fnError.message);
+        if (fnError) {
+          let errMsg = fnError.message;
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const errBody = await (fnError as any).context.json();
+            errMsg = errBody.error || errBody.message || JSON.stringify(errBody);
+          } catch { /* use original message */ }
+          throw new Error(errMsg);
+        }
         const data = fnData;
         const updatedMessages: CoachMessage[] = [
           ...newMessages,
