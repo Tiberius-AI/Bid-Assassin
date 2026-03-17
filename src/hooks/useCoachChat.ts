@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import supabase from "@/supabase";
-import { SUPABASE_URL } from "@/config";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/config";
 
 export interface CoachMessage {
   role: "user" | "assistant";
@@ -173,6 +173,7 @@ export function useCoachChat(coachType = "estimator") {
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${session.access_token}`,
+              apikey: SUPABASE_ANON_KEY,
             },
             body: JSON.stringify({
               coach_type: coachType,
