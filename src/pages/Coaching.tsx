@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MessageSquare, Brain, Target, Users, Handshake } from "lucide-react";
+import { Brain, Handshake, Target, Users } from "lucide-react";
+import CoachPage from "@/components/coaching/CoachPage";
 
 const COACHES = [
   {
@@ -9,6 +10,7 @@ const COACHES = [
     icon: Brain,
     color: "text-blue-600",
     bg: "bg-blue-50",
+    available: true,
   },
   {
     id: "closer",
@@ -17,6 +19,7 @@ const COACHES = [
     icon: Handshake,
     color: "text-green-600",
     bg: "bg-green-50",
+    available: false,
   },
   {
     id: "prospector",
@@ -25,6 +28,7 @@ const COACHES = [
     icon: Target,
     color: "text-purple-600",
     bg: "bg-purple-50",
+    available: false,
   },
   {
     id: "gc_whisperer",
@@ -33,11 +37,21 @@ const COACHES = [
     icon: Users,
     color: "text-orange-600",
     bg: "bg-orange-50",
+    available: false,
   },
 ];
 
 export default function Coaching() {
-  const [, setSelectedCoach] = useState<string | null>(null);
+  const [activeCoach, setActiveCoach] = useState<string | null>(null);
+
+  if (activeCoach) {
+    return (
+      <CoachPage
+        coachType={activeCoach}
+        onBack={() => setActiveCoach(null)}
+      />
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
@@ -54,33 +68,38 @@ export default function Coaching() {
           return (
             <button
               key={coach.id}
-              onClick={() => setSelectedCoach(coach.id)}
-              className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-left hover:border-gray-300 transition-colors"
+              onClick={() => coach.available && setActiveCoach(coach.id)}
+              disabled={!coach.available}
+              className={`bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-left transition-colors relative ${
+                coach.available
+                  ? "hover:border-gray-300 cursor-pointer"
+                  : "opacity-60 cursor-not-allowed"
+              }`}
             >
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-lg ${coach.bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`h-6 w-6 ${coach.color}`} />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{coach.name}</h3>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-900">{coach.name}</h3>
+                    {!coach.available && (
+                      <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                        Coming Soon
+                      </span>
+                    )}
+                    {coach.available && (
+                      <span className="text-[10px] font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        Available
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">{coach.description}</p>
                 </div>
               </div>
             </button>
           );
         })}
-      </div>
-
-      {/* Coming Soon Notice */}
-      <div className="mt-8 bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
-        <MessageSquare className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          AI Coaching Coming Soon
-        </h3>
-        <p className="text-sm text-gray-500 max-w-md mx-auto">
-          Full coaching chat sessions with context-aware AI assistants are in Phase 4.
-          For now, use the AI Agent in the Proposal Builder for intelligent proposal assistance.
-        </p>
       </div>
     </div>
   );
