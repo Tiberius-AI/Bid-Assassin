@@ -118,8 +118,9 @@ serve(async (req) => {
     const anthropicData = await anthropicResponse.json();
 
     if (!anthropicResponse.ok) {
-      console.error("Anthropic API error:", anthropicData);
-      return new Response(JSON.stringify({ error: "AI service error", details: anthropicData }), {
+      const errMsg = anthropicData?.error?.message || JSON.stringify(anthropicData);
+      console.error("Anthropic API error:", errMsg);
+      return new Response(JSON.stringify({ error: `Anthropic: ${errMsg}` }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
