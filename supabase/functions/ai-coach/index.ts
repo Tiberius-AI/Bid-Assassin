@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -100,39 +100,41 @@ serve(async (req) => {
       fullSystemPrompt += `\n\nCONTEXT -- The user has shared the following proposal data for review:\n${JSON.stringify(proposal_context, null, 2)}\n\nAnalyze this proposal data when relevant to the conversation. Reference specific line items by name and amount.`;
     }
 
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "claude-sonnet-4-6",
         max_tokens: 2048,
-        messages: [
-          { role: "system", content: fullSystemPrompt },
-          ...messages,
-        ],
+        system: fullSystemPrompt,
+        messages: messages,
       }),
     });
 
-    const openaiData = await openaiResponse.json();
+    const anthropicData = await anthropicResponse.json();
 
-    if (!openaiResponse.ok) {
-      const errMsg = openaiData?.error?.message || JSON.stringify(openaiData);
-      console.error("OpenAI API error:", errMsg);
-      return new Response(JSON.stringify({ error: `OpenAI: ${errMsg}` }), {
+    if (!anthropicResponse.ok) {
+      const errMsg = anthropicData?.error?.message || JSON.stringify(anthropicData);
+      console.error("Anthropic API error:", errMsg);
+      return new Response(JSON.stringify({ error: `Anthropic: ${errMsg}` }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
-    const assistantMessage = openaiData.choices[0]?.message?.content ?? "";
+    const assistantMessage = anthropicData.content
+      .filter((block: { type: string }) => block.type === "text")
+      .map((block: { text: string }) => block.text)
+      .join("\n");
 
     return new Response(
       JSON.stringify({
         message: assistantMessage,
-        usage: openaiData.usage,
+        usage: anthropicData.usage,
         conversation_id,
       }),
       {
