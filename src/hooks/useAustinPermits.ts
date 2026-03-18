@@ -280,8 +280,11 @@ function scoreAndShape(
 // localStorage cache helpers
 // ─────────────────────────────────────────────────────────────
 
-function cacheKey(companyId: string, today: string) {
-  return `austin_permits_${companyId}_${today}`;
+function cacheKey(companyId: string, today: string, centerLat: number | null, centerLng: number | null) {
+  // Include center coords so stale empty cache is invalidated when geocoding completes
+  const lat = centerLat != null ? centerLat.toFixed(2) : "0";
+  const lng = centerLng != null ? centerLng.toFixed(2) : "0";
+  return `austin_permits_${companyId}_${today}_${lat}_${lng}`;
 }
 
 function readCache(key: string): DbOpportunity[] | null {
@@ -329,7 +332,7 @@ export function useAustinPermits(
       setPermits([]); return;
     }
 
-    const key = cacheKey(companyId, today);
+    const key = cacheKey(companyId, today, settings.center_lat, settings.center_lng);
 
     if (!force) {
       const cached = readCache(key);

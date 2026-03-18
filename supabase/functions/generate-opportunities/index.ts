@@ -244,7 +244,7 @@ async function fetchPlaces(
     locationBias: {
       circle: {
         center: { latitude: center.lat, longitude: center.lng },
-        radius: Math.min(radiusMiles * MILES_TO_METERS, 50000),
+        radius: Math.min(radiusMiles * MILES_TO_METERS, 250000), // up to ~155 miles
       },
     },
     maxResultCount: 20,
@@ -508,6 +508,9 @@ Deno.serve(async (req: Request) => {
     const distMiles = placeLat && placeLng
       ? parseFloat(distanceMiles(center, { lat: placeLat, lng: placeLng }).toFixed(1))
       : null;
+
+    // Hard radius filter — prevents over-reach (e.g. user 160mi away seeing local leads)
+    if (distMiles !== null && distMiles > radiusMiles) continue;
 
     const tradeScore  = scoreTradeAlignment(businessType, settingsTrades);
     const distScore   = distMiles !== null ? scoreDistance(distMiles) : 10;
