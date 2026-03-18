@@ -475,21 +475,25 @@ Deno.serve(async (req: Request) => {
   // 5. Determine today's rotation category
   const dayIndex = rotationIndex % ROTATION.length;
   const rotation = ROTATION[dayIndex];
-  const companyQuery = `${rotation.company} ${cityState}`;
+  // Use state only (not city) so Google casts a wide net across the region —
+  // small cities like New Braunfels return too few results when named explicitly.
+  const companyQuery = `${rotation.company} ${state}`;
   const peopleQuery  = rotation.people;
 
   console.log(`Generating for ${cityState} | rotation ${dayIndex} | company: "${companyQuery}" | people: "${peopleQuery}"`);
 
-  // 6. Load existing source_ids to deduplicate (last 30 days)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().split("T")[0];
+  // 6. Load existing source_ids to deduplicate (last 14 days, not 30)
+  // 30-day window was causing between-metro users to exhaust the Places pool too quickly.
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString().split("T")[0];
   const { data: existing } = await supabase
     .from("opportunities")
     .select("source_id")
     .eq("company_id", companyId)
-    .gte("shown_date", thirtyDaysAgo)
+    .gte("shown_date", fourteenDaysAgo)
     .not("source_id", "is", null);
 
   const seenIds = new Set((existing ?? []).map((r: { source_id: string }) => r.source_id));
+  console.log(`Dedup pool: ${seenIds.size} seen IDs from last 14 days`);
 
   // 7. Fetch company cards from Google Places
   const places = await fetchPlaces(companyQuery, center, radiusMiles, placesKey);
