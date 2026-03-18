@@ -28,7 +28,7 @@ const COACHES = [
     icon: Target,
     color: "text-purple-600",
     bg: "bg-purple-50",
-    available: false,
+    available: true,
   },
   {
     id: "gc_whisperer",

@@ -21,7 +21,16 @@ export interface ProposalContext {
   }>;
 }
 
-export function useCoachChat(coachType = "estimator") {
+export interface CompanyContext {
+  name: string;
+  trades: string[];
+  city: string | null;
+  state: string | null;
+  certifications: string[];
+  company_bio: string | null;
+}
+
+export function useCoachChat(coachType = "estimator", companyContext: CompanyContext | null = null) {
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +176,7 @@ export function useCoachChat(coachType = "estimator") {
             coach_type: coachType,
             messages: newMessages,
             proposal_context: proposalContext,
+            company_context: companyContext,
             conversation_id: convId,
           },
         });

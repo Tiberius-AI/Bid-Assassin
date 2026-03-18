@@ -6,6 +6,7 @@ import ProposalSelector from "./ProposalSelector";
 import type { CoachMessage, ProposalContext } from "@/hooks/useCoachChat";
 
 interface Props {
+  coachType: string;
   messages: CoachMessage[];
   loading: boolean;
   error: string | null;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function ChatArea({
+  coachType,
   messages,
   loading,
   error,
@@ -80,7 +82,7 @@ export default function ChatArea({
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <StarterPrompts onSelect={(prompt) => onSend(prompt)} />
+          <StarterPrompts coachType={coachType} onSelect={(prompt) => onSend(prompt)} />
         ) : (
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
             {messages.map((msg, idx) => (

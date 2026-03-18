@@ -4,6 +4,14 @@ import ConversationSidebar from "./ConversationSidebar";
 import ChatArea from "./ChatArea";
 import { useCoachChat } from "@/hooks/useCoachChat";
 import { useCoachConversations } from "@/hooks/useCoachConversations";
+import { useSession } from "@/context/SessionContext";
+
+const COACH_NAMES: Record<string, string> = {
+  estimator: "The Estimator",
+  prospector: "The Prospector",
+  closer: "The Closer",
+  gc_whisperer: "The GC Whisperer",
+};
 
 interface Props {
   coachType?: string;
@@ -13,6 +21,16 @@ interface Props {
 export default function CoachPage({ coachType = "estimator", onBack }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastSentMessage, setLastSentMessage] = useState<string>("");
+  const { company } = useSession();
+
+  const companyContext = company ? {
+    name: company.name,
+    trades: company.trades ?? [],
+    city: company.city,
+    state: company.state,
+    certifications: company.certifications ?? [],
+    company_bio: company.company_bio,
+  } : null;
 
   const {
     messages,
@@ -25,7 +43,7 @@ export default function CoachPage({ coachType = "estimator", onBack }: Props) {
     attachProposal,
     detachProposal,
     newConversation,
-  } = useCoachChat(coachType);
+  } = useCoachChat(coachType, companyContext);
 
   const {
     conversations,
@@ -38,7 +56,6 @@ export default function CoachPage({ coachType = "estimator", onBack }: Props) {
   const handleSend = async (message: string) => {
     setLastSentMessage(message);
     await sendMessage(message);
-    // Refresh conversation list (new convo may have been created)
     fetchConversations();
     if (conversationId) updateConversationTimestamp(conversationId);
   };
@@ -55,9 +72,7 @@ export default function CoachPage({ coachType = "estimator", onBack }: Props) {
 
   const handleDelete = async (convId: string) => {
     await deleteConversation(convId);
-    if (conversationId === convId) {
-      newConversation();
-    }
+    if (conversationId === convId) newConversation();
   };
 
   const handleAttachProposal = async (proposalId: string, _proposalName: string) => {
@@ -65,9 +80,7 @@ export default function CoachPage({ coachType = "estimator", onBack }: Props) {
   };
 
   const handleRetry = () => {
-    if (lastSentMessage) {
-      sendMessage(lastSentMessage);
-    }
+    if (lastSentMessage) sendMessage(lastSentMessage);
   };
 
   const sidebarEl = (
@@ -127,11 +140,14 @@ export default function CoachPage({ coachType = "estimator", onBack }: Props) {
             <span className="hidden sm:inline">AI Coaches</span>
           </button>
           <span className="text-gray-300 hidden sm:inline">/</span>
-          <span className="text-sm font-medium text-gray-900">The Estimator</span>
+          <span className="text-sm font-medium text-gray-900">
+            {COACH_NAMES[coachType] ?? coachType}
+          </span>
         </div>
 
-        {/* Chat area fills remaining space */}
+        {/* Chat area */}
         <ChatArea
+          coachType={coachType}
           messages={messages}
           loading={loading}
           error={error}
