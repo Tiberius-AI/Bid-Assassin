@@ -574,6 +574,12 @@ Deno.serve(async (req: Request) => {
       continue;
     }
 
+    // Skip if geocoding hasn't run yet — without center we can't distance-filter
+    if (!center) {
+      console.log(`Company ${companyId}: center_lat/lng not set yet, skipping permits`);
+      continue;
+    }
+
     // Load existing permit source_ids to dedup
     const { data: existing } = await sb
       .from("opportunities")

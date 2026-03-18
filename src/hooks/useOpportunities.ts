@@ -138,24 +138,18 @@ export function useOpportunities(companyId: string | undefined, dateFilter: "tod
   }, [companyId]);
 
   // ── Generate today's batch via edge functions ─────────────
-  // Runs generate-opportunities (Google Places + LinkedIn) in parallel
-  // with both permit functions (SA + Austin). Permit functions handle
-  // their own permits_enabled check and source_id deduplication.
+  // Step 1: generate-opportunities (geocodes center if needed, then Places API)
+  // Step 2: after geocoding is done, run permit functions (they need center_lat/lng)
   const generate = useCallback(async (forceRefresh = false) => {
     if (!companyId) return;
     setGenerating(true);
     setError(null);
 
     try {
-      const [oppResult, ] = await Promise.all([
-        supabase.functions.invoke("generate-opportunities", {
-          body: { company_id: companyId, force_refresh: forceRefresh },
-        }),
-        supabase.functions.invoke("fetch-permits-sa", {
-          body: { company_id: companyId },
-        }),
-        // Austin permits are fetched client-side via useAustinPermits hook
-      ]);
+      // Run generate-opportunities first so geocoding saves center_lat/lng before permits run
+      const oppResult = await supabase.functions.invoke("generate-opportunities", {
+        body: { company_id: companyId, force_refresh: forceRefresh },
+      });
 
       const { data: fnData, error: fnErr } = oppResult;
       if (fnErr) {
@@ -163,6 +157,16 @@ export function useOpportunities(companyId: string | undefined, dateFilter: "tod
         setError(detail);
         console.error("generate-opportunities error:", detail, fnErr);
       } else {
+        // Now run both permit functions in parallel (center_lat/lng is now set in DB)
+        await Promise.all([
+          supabase.functions.invoke("fetch-permits-sa", {
+            body: { company_id: companyId },
+          }),
+          supabase.functions.invoke("fetch-permits-austin", {
+            body: { company_id: companyId },
+          }),
+        ]).catch((e) => console.warn("Permit functions error (non-fatal):", e));
+
         await loadOpportunities();
         await loadSettings();
       }
