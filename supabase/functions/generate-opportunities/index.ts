@@ -240,14 +240,31 @@ async function fetchPlaces(
   radiusMiles: number,
   apiKey: string,
 ): Promise<PlacesResult[]> {
-  const body = {
-    textQuery: query,
-    locationBias: {
+  // Google Places circle radius is capped at 50,000m (~31mi).
+  // For larger radii use a bounding rectangle instead — no size limit.
+  const radiusMeters = radiusMiles * MILES_TO_METERS;
+  let locationBias: Record<string, unknown>;
+  if (radiusMeters <= 50000) {
+    locationBias = {
       circle: {
         center: { latitude: center.lat, longitude: center.lng },
-        radius: Math.min(radiusMiles * MILES_TO_METERS, 250000), // up to ~155 miles
+        radius: radiusMeters,
       },
-    },
+    };
+  } else {
+    const latDelta = radiusMiles / 69.0;
+    const lngDelta = radiusMiles / (69.0 * Math.cos(center.lat * Math.PI / 180));
+    locationBias = {
+      rectangle: {
+        low:  { latitude: center.lat - latDelta, longitude: center.lng - lngDelta },
+        high: { latitude: center.lat + latDelta, longitude: center.lng + lngDelta },
+      },
+    };
+  }
+
+  const body = {
+    textQuery: query,
+    locationBias,
     maxResultCount: 20,
   };
 
