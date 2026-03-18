@@ -34,7 +34,7 @@ const SEARCH_URL  = "https://www.googleapis.com/customsearch/v1";
 const GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 
 const MILES_TO_METERS = 1609.34;
-const TARGET_COMPANY_COUNT = 8;
+const TARGET_COMPANY_COUNT = 12;
 const TARGET_PERSON_COUNT  = 5;
 
 const CORS = {
@@ -189,6 +189,7 @@ function scoreDistance(miles: number): number {
   if (miles <= 10) return 30;
   if (miles <= 25) return 22;
   if (miles <= 50) return 14;
+  if (miles <= 80) return 10;
   return 5;
 }
 
@@ -443,7 +444,7 @@ Deno.serve(async (req: Request) => {
       .eq("company_id", companyId)
       .eq("shown_date", today);
 
-    if ((count ?? 0) >= 5) {
+    if ((count ?? 0) >= 10) {
       return new Response(
         JSON.stringify({ success: true, message: "Today's batch already exists", count }),
         { status: 200, headers: { ...CORS, "Content-Type": "application/json" } },
@@ -496,7 +497,7 @@ Deno.serve(async (req: Request) => {
 
   const newOpps: NewOpportunity[] = [];
 
-  for (const place of places.slice(0, TARGET_COMPANY_COUNT + 5)) {
+  for (const place of places) {
     const placeId = place.id;
     if (!placeId || seenIds.has(placeId)) continue;
     if (newOpps.filter((o) => o.card_type === "company").length >= TARGET_COMPANY_COUNT) break;
@@ -517,7 +518,7 @@ Deno.serve(async (req: Request) => {
     const qualScore   = scoreQuality(place.rating, place.userRatingCount, !!place.nationalPhoneNumber, !!place.websiteUri);
     const total       = Math.min(100, tradeScore + distScore + qualScore + 5);
 
-    if (total < 40) continue; // Skip very low-relevance results
+    if (total < 30) continue; // Skip very low-relevance results
 
     newOpps.push({
       company_id:        companyId,

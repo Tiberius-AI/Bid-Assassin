@@ -157,14 +157,18 @@ export default function Opportunities() {
   const [localPermitsEnabled, setLocalPermitsEnabled]     = useState(true);
   const [localPermitMinValue, setLocalPermitMinValue]     = useState(50000);
   const settingsLoaded                  = settings !== null;
+  const [settingsInitialized, setSettingsInitialized] = useState(false);
 
-  // Sync from DB settings once loaded
-  if (settingsLoaded && localTrades.length === 0 && settings.trades.length > 0) {
-    setLocalTrades(settings.trades);
-    setLocalRadius(settings.radius_miles);
-    setLocalPermitsEnabled(settings.permits_enabled);
-    setLocalPermitMinValue(settings.permit_min_valuation);
-  }
+  // Sync from DB settings once on first load
+  useEffect(() => {
+    if (!settingsInitialized && settingsLoaded && settings) {
+      setLocalRadius(settings.radius_miles);
+      setLocalTrades(settings.trades.length > 0 ? settings.trades : (company?.trades ?? []));
+      setLocalPermitsEnabled(settings.permits_enabled);
+      setLocalPermitMinValue(settings.permit_min_valuation);
+      setSettingsInitialized(true);
+    }
+  }, [settingsInitialized, settingsLoaded, settings, company?.trades]);
 
   const primaryTrade = localTrades[0] || company?.trades?.[0] || "General";
 
