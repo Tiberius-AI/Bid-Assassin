@@ -416,7 +416,19 @@ Deno.serve(async (req: Request) => {
     companiesQuery = companiesQuery.eq("company_id", targetCompanyId);
   }
 
-  const { data: settingsRows, error: settingsErr } = await companiesQuery;
+  let { data: settingsRows, error: settingsErr } = await companiesQuery;
+
+  // Fall back to core columns if permit columns don't exist yet (migration 009 not run)
+  if (settingsErr?.message?.includes("does not exist")) {
+    console.warn("Permit columns missing in opportunity_settings, falling back to core columns");
+    let coreQuery = sb
+      .from("opportunity_settings")
+      .select("company_id, trades, center_lat, center_lng, radius_miles");
+    if (targetCompanyId) coreQuery = coreQuery.eq("company_id", targetCompanyId);
+    const fallback = await coreQuery;
+    settingsRows = fallback.data;
+    settingsErr = fallback.error;
+  }
 
   if (settingsErr) {
     console.error("Error loading opportunity_settings:", settingsErr.message);

@@ -112,27 +112,39 @@ export function useOpportunities(companyId: string | undefined, dateFilter: "tod
   const loadSettings = useCallback(async () => {
     if (!companyId) return;
 
-    // Select base columns first; permits columns added in migration 009
-    const { data, error: settingsErr } = await supabase
+    // Try full query first (includes permit columns from migration 009)
+    let { data, error: settingsErr } = await supabase
       .from("opportunity_settings")
       .select("trades, radius_miles, center_lat, center_lng, rotation_index, permits_enabled, permit_min_valuation")
       .eq("company_id", companyId)
       .single();
 
-    if (settingsErr) {
-      console.warn("[useOpportunities] loadSettings error (migration 009 may not have run):", settingsErr.message);
+    // If permit columns don't exist yet, retry with core columns only
+    // (prevents center_lat/center_lng from being lost when migration 009 hasn't run)
+    if (settingsErr?.message?.includes("does not exist")) {
+      console.warn("[useOpportunities] Permit columns missing, falling back to core columns");
+      const fallback = await supabase
+        .from("opportunity_settings")
+        .select("trades, radius_miles, center_lat, center_lng, rotation_index")
+        .eq("company_id", companyId)
+        .single();
+      data = fallback.data;
+      settingsErr = fallback.error ?? null;
     }
 
-    // Always set settings (use defaults for missing permit columns)
-    if (data || settingsErr) {
+    if (settingsErr && settingsErr.code !== "PGRST116") {
+      console.warn("[useOpportunities] loadSettings error:", settingsErr.message);
+    }
+
+    if (data || !settingsErr) {
       setSettings({
         trades:               data?.trades        ?? [],
         radius_miles:         data?.radius_miles  ?? 50,
         center_lat:           data?.center_lat    ?? null,
         center_lng:           data?.center_lng    ?? null,
         rotation_index:       data?.rotation_index ?? 0,
-        permits_enabled:      data?.permits_enabled ?? true,
-        permit_min_valuation: data?.permit_min_valuation ?? 50000,
+        permits_enabled:      (data as Record<string, unknown>)?.permits_enabled as boolean ?? true,
+        permit_min_valuation: (data as Record<string, unknown>)?.permit_min_valuation as number ?? 50000,
       });
     }
   }, [companyId]);
@@ -181,13 +193,21 @@ export function useOpportunities(companyId: string | undefined, dateFilter: "tod
   const saveSettings = useCallback(async (updates: Partial<OpportunitySettings>) => {
     if (!companyId) return;
 
-    const { error: err } = await supabase
+    const payload = { company_id: companyId, ...updates, updated_at: new Date().toISOString() };
+    let { error: err } = await supabase
       .from("opportunity_settings")
-      .upsert({
-        company_id: companyId,
-        ...updates,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "company_id" });
+      .upsert(payload, { onConflict: "company_id" });
+
+    // If permit columns don't exist yet, retry without them
+    if (err?.message?.includes("does not exist")) {
+      console.warn("[useOpportunities] Permit columns missing in saveSettings, retrying without them");
+      const { permits_enabled, permit_min_valuation, ...coreUpdates } = payload;
+      void permits_enabled; void permit_min_valuation;
+      const fallback = await supabase
+        .from("opportunity_settings")
+        .upsert(coreUpdates, { onConflict: "company_id" });
+      err = fallback.error;
+    }
 
     if (!err) {
       setSettings((prev) => prev ? { ...prev, ...updates } : (updates as OpportunitySettings));
