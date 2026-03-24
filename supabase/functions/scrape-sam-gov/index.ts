@@ -25,7 +25,7 @@ const SAM_BASE = "https://api.sam.gov/prod/opportunities/v2/search";
 const PAGE_SIZE = 50;          // reduced from 100 to be lighter on the API
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 2000;
-const REQUEST_LIMIT = 9;       // circuit breaker: stay under 10/day public tier
+const REQUEST_LIMIT = 900;     // circuit breaker: stay under 1,000/day registered entity tier
 
 // All NAICS codes we care about (from spec)
 const TARGET_NAICS = [
@@ -140,8 +140,8 @@ function mapOpportunity(opp: SamOpportunity) {
     department: opp.department ?? null,
     sub_tier: opp.subTier ?? null,
     office: opp.office ?? null,
-    posted_date: opp.postedDate ?? null,
-    response_deadline: opp.responseDeadLine ?? null,
+    posted_date: opp.postedDate || null,
+    response_deadline: opp.responseDeadLine || null,
     naics_code: opp.naicsCode ?? null,
     classification_code: opp.classificationCode ?? null,
     set_aside_type: opp.typeOfSetAside ?? null,
@@ -215,13 +215,14 @@ async function scrapeNaics(
     const data = await res.json();
     pages++;
 
-    // SAM.gov wraps results in opportunitiesData.opportunity
-    const records: SamOpportunity[] =
-      data?.opportunitiesData?.opportunity ?? [];
+    // SAM.gov v2: opportunitiesData is the array; totalRecords is top-level
+    const records: SamOpportunity[] = Array.isArray(data?.opportunitiesData)
+      ? data.opportunitiesData
+      : [];
 
     if (records.length === 0) break;
 
-    totalRecords = data?.opportunitiesData?.totalRecords ?? records.length;
+    totalRecords = data?.totalRecords ?? records.length;
 
     for (const opp of records) {
       // Skip award notices and inactive listings
@@ -292,7 +293,7 @@ Deno.serve(async (req: Request) => {
           .select("value")
           .eq("key", "last_scrape_timestamp")
           .single();
-        since = result?.data?.value ?? new Date(Date.now() - 7 * 86_400_000).toISOString();
+        since = result?.data?.value ?? new Date(Date.now() - 30 * 86_400_000).toISOString();
       }
     } catch {
       since = new Date(Date.now() - 7 * 86_400_000).toISOString();
@@ -330,7 +331,7 @@ Deno.serve(async (req: Request) => {
           const batch = opportunities.slice(i, i + BATCH);
 
           const result = await supabase
-            .from("opportunities")
+            .from("sam_opportunities")
             .upsert(batch, {
               onConflict: "source_id",
               ignoreDuplicates: false,

@@ -255,7 +255,7 @@ Deno.serve(async (req: Request) => {
 
   // 1. Load opportunities to process
   let oppsQuery = supabase
-    .from("opportunities")
+    .from("sam_opportunities")
     .select("id, naics_code, set_aside_type, place_of_performance, posted_date, department, office")
     .eq("active", true);
 

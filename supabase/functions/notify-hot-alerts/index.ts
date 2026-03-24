@@ -273,7 +273,7 @@ Deno.serve(async (req: Request) => {
 
   // Fetch opportunities
   const { data: opps } = await supabase
-    .from("opportunities")
+    .from("sam_opportunities")
     .select("id, source_id, title, department, office, response_deadline, naics_code, set_aside_description, place_of_performance, contacts, solicitation_number")
     .in("id", oppIds);
 

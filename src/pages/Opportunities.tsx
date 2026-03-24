@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useOpportunities, type DbOpportunity, type OppStatus, type PermitMetadata } from "@/hooks/useOpportunities";
 import { useAustinPermits } from "@/hooks/useAustinPermits";
 import { useSanAntonioPermits } from "@/hooks/useSanAntonioPermits";
+import FederalContractsView from "@/components/opportunities/FederalContractsView";
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -110,7 +111,8 @@ function buildTemplate(
 // ─────────────────────────────────────────────────────────────
 
 export default function Opportunities() {
-  const { profile, company } = useSession();
+  const { profile, company, session } = useSession();
+  const [section, setSection] = useState<"outreach" | "federal">("outreach");
 
   const userName    = profile?.full_name || "Your Name";
   const companyName = company?.name       || "Your Company";
@@ -360,70 +362,90 @@ export default function Opportunities() {
           </div>
         </div>
 
-        {/* Date tabs */}
-        <div className="flex gap-1 px-4 lg:px-6 pb-2">
-          {(["today", "week", "all"] as const).map((tab) => (
+        {/* Section tabs: Outreach Leads | Federal Contracts */}
+        <div className="flex gap-1 px-4 lg:px-6 pb-2 border-b border-gray-100">
+          {([
+            { key: "outreach", label: "Outreach Leads" },
+            { key: "federal",  label: "Federal Contracts" },
+          ] as const).map((tab) => (
             <button
-              key={tab}
-              onClick={() => setDateFilter(tab)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                dateFilter === tab
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+              key={tab.key}
+              onClick={() => setSection(tab.key)}
+              className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${
+                section === tab.key
+                  ? "text-gray-900 border-b-2 border-gray-900 -mb-px"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              {tab === "today" ? "Today" : tab === "week" ? "This Week" : "All Time"}
+              {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Rotation strip */}
-        <div className="overflow-x-auto px-4 lg:px-6 pb-3">
-          <div className="flex gap-2 min-w-max">
-            {ROTATION.map((r, i) => (
-              <div
-                key={r.day}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  i === TODAY_IDX
-                    ? "bg-teal-700 text-white border-teal-700"
-                    : "bg-gray-50 text-gray-500 border-gray-200"
+        {/* Date tabs, rotation strip, filter chips — outreach section only */}
+        {section === "outreach" && <>
+          <div className="flex gap-1 px-4 lg:px-6 pb-2">
+            {(["today", "week", "all"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setDateFilter(tab)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                  dateFilter === tab
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                 }`}
               >
-                <span className="font-bold">{r.day}</span>
-                <span className={`ml-1.5 ${i === TODAY_IDX ? "text-teal-100" : "text-gray-400"}`}>
-                  {r.company}
-                </span>
-              </div>
+                {tab === "today" ? "Today" : tab === "week" ? "This Week" : "All Time"}
+              </button>
             ))}
           </div>
-        </div>
 
-        {/* Filter chips — feed only */}
-        {view === "feed" && (
           <div className="overflow-x-auto px-4 lg:px-6 pb-3">
             <div className="flex gap-2 min-w-max">
-              {[
-                { key: "all",       label: `All (${visible.length})` },
-                { key: "saved",     label: `Saved (${savedCount})` },
-                ...(permitCount > 0 ? [{ key: "permits", label: `Permits (${permitCount})` }] : []),
-                { key: "companies", label: `Companies (${companyCount})` },
-                { key: "people",    label: `People (${personCount})` },
-              ].map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setActiveFilter(f.key)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    activeFilter === f.key
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+              {ROTATION.map((r, i) => (
+                <div
+                  key={r.day}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    i === TODAY_IDX
+                      ? "bg-teal-700 text-white border-teal-700"
+                      : "bg-gray-50 text-gray-500 border-gray-200"
                   }`}
                 >
-                  {f.label}
-                </button>
+                  <span className="font-bold">{r.day}</span>
+                  <span className={`ml-1.5 ${i === TODAY_IDX ? "text-teal-100" : "text-gray-400"}`}>
+                    {r.company}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
-        )}
+
+          {view === "feed" && (
+            <div className="overflow-x-auto px-4 lg:px-6 pb-3">
+              <div className="flex gap-2 min-w-max">
+                {[
+                  { key: "all",       label: `All (${visible.length})` },
+                  { key: "saved",     label: `Saved (${savedCount})` },
+                  ...(permitCount > 0 ? [{ key: "permits", label: `Permits (${permitCount})` }] : []),
+                  { key: "companies", label: `Companies (${companyCount})` },
+                  { key: "people",    label: `People (${personCount})` },
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setActiveFilter(f.key)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      activeFilter === f.key
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>}
       </div>
 
       {/* ── Settings panel ──────────────────────────────────── */}
@@ -473,7 +495,7 @@ export default function Opportunities() {
               {[
                 { name: "Google Places",             status: "active",  label: "Active" },
                 { name: "LinkedIn (via Google)",      status: "active",  label: "Active" },
-                { name: "SAM.gov Federal Contracts",  status: "pending", label: "IRS Verification Pending" },
+                { name: "SAM.gov Federal Contracts",  status: "active",  label: "Active" },
                 { name: "Building Permits (SA)",      status: "active",  label: "Active" },
                 { name: "Building Permits (Austin)",  status: "active",  label: "Active" },
                 { name: "Building Permits (Houston)", status: "soon",    label: "Coming Soon" },
@@ -555,8 +577,13 @@ export default function Opportunities() {
       {/* ── Main content ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
 
+        {/* FEDERAL CONTRACTS VIEW */}
+        {section === "federal" && (
+          <FederalContractsView userId={session?.user?.id} />
+        )}
+
         {/* FEED VIEW */}
-        {view === "feed" && (
+        {section === "outreach" && view === "feed" && (
           <div className="max-w-2xl space-y-3">
             {generating && opportunities.length > 0 && (
               <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
@@ -597,7 +624,7 @@ export default function Opportunities() {
         )}
 
         {/* PIPELINE VIEW */}
-        {view === "pipeline" && (
+        {section === "outreach" && view === "pipeline" && (
           <div className="max-w-2xl space-y-6">
             {pipelineItems.length === 0 && (
               <div className="text-center py-16 text-gray-400">
@@ -669,8 +696,8 @@ export default function Opportunities() {
           </div>
         )}
 
-        {/* Stats footer */}
-        <div className="max-w-2xl mt-8 border-t border-gray-100 pt-5">
+        {/* Stats footer — outreach only */}
+        {section === "outreach" && <div className="max-w-2xl mt-8 border-t border-gray-100 pt-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: "Today",          value: opportunities.length },
@@ -684,7 +711,7 @@ export default function Opportunities() {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* ── Outreach drawer ──────────────────────────────────── */}
