@@ -128,7 +128,7 @@ export function useOpportunities(companyId: string | undefined, dateFilter: "tod
         .select("trades, radius_miles, center_lat, center_lng, rotation_index")
         .eq("company_id", companyId)
         .single();
-      data = fallback.data;
+      data = fallback.data as typeof data;
       settingsErr = fallback.error ?? null;
     }
 
