@@ -42,6 +42,7 @@ interface Opportunity {
     country?: string | null;
   } | null;
   posted_date: string | null;
+  response_deadline: string | null;
   department: string | null;
   office: string | null;
 }
@@ -134,21 +135,19 @@ function scoreLocation(opp: Opportunity, company: Company): number {
   const oppState = opp.place_of_performance?.state?.toUpperCase() ?? null;
   const memberState = company.state?.toUpperCase() ?? null;
 
-  if (!oppState) {
-    // No stated place of performance — treat as national
-    return 5;
-  }
+  // No stated place of performance — treat as national
+  if (!oppState) return 5;
 
   if (!memberState) return 5;
 
-  // Exact state match
-  if (oppState === memberState) return 25;
+  // Same state (radius-based 25-pt bucket requires geocoding — Phase 2)
+  if (oppState === memberState) return 15;
 
   // Adjacent state
   const adjacent = ADJACENT_STATES[memberState] ?? [];
   if (adjacent.includes(oppState)) return 10;
 
-  // Same country / no match
+  // No geographic match
   return 5;
 }
 
@@ -170,10 +169,14 @@ function scoreCertification(opp: Opportunity, company: Company): number {
 }
 
 function scoreFreshness(opp: Opportunity): number {
+  const now = new Date();
+
+  // Expired deadline = not worth pursuing
+  if (opp.response_deadline && new Date(opp.response_deadline) < now) return 0;
+
   if (!opp.posted_date) return 2;
 
   const posted = new Date(opp.posted_date);
-  const now = new Date();
   const diffDays = (now.getTime() - posted.getTime()) / (1000 * 60 * 60 * 24);
 
   if (diffDays < 1)  return 10;
@@ -256,7 +259,7 @@ Deno.serve(async (req: Request) => {
   // 1. Load opportunities to process
   let oppsQuery = supabase
     .from("sam_opportunities")
-    .select("id, naics_code, set_aside_type, place_of_performance, posted_date, department, office")
+    .select("id, naics_code, set_aside_type, place_of_performance, posted_date, response_deadline, department, office")
     .eq("active", true);
 
   if (opportunityIds && opportunityIds.length > 0) {

@@ -136,7 +136,13 @@ export function useFederalContracts(userId: string | undefined) {
         };
       });
 
-    setContracts(mapped);
+    const now = new Date();
+    const filtered = mapped.filter((c) => {
+      if (!c.response_deadline) return true;
+      return new Date(c.response_deadline) > now;
+    });
+
+    setContracts(filtered);
     setLoading(false);
   }, [userId]);
 
