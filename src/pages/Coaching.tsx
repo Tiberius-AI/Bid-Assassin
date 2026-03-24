@@ -19,7 +19,7 @@ const COACHES = [
     icon: Handshake,
     color: "text-green-600",
     bg: "bg-green-50",
-    available: false,
+    available: true,
   },
   {
     id: "prospector",

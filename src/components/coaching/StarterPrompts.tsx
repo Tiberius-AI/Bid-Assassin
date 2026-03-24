@@ -1,4 +1,4 @@
-import { Calculator, Target } from "lucide-react";
+import { Calculator, Handshake, Target } from "lucide-react";
 
 const COACH_CONFIG: Record<string, {
   icon: React.ElementType;
@@ -17,6 +17,20 @@ const COACH_CONFIG: Record<string, {
       "Am I pricing this right for my market?",
       "Help me structure my line items",
       "Should I bid this project or pass?",
+    ],
+  },
+  closer: {
+    icon: Handshake,
+    iconBg: "bg-green-500",
+    name: "The Closer",
+    subtitle: "Negotiation, Objection Handling & Collections",
+    prompts: [
+      "A GC says I'm too high. What do I do?",
+      "How do I handle scope creep on this job?",
+      "Help me collect on an overdue invoice",
+      "The GC went silent after I submitted my bid",
+      "Write me a follow-up message for a stalled deal",
+      "How do I negotiate better payment terms?",
     ],
   },
   prospector: {
