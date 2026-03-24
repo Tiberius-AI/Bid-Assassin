@@ -1,4 +1,4 @@
-import { Calculator, Handshake, Target } from "lucide-react";
+import { Calculator, Handshake, Target, Users } from "lucide-react";
 
 const COACH_CONFIG: Record<string, {
   icon: React.ElementType;
@@ -31,6 +31,20 @@ const COACH_CONFIG: Record<string, {
       "The GC went silent after I submitted my bid",
       "Write me a follow-up message for a stalled deal",
       "How do I negotiate better payment terms?",
+    ],
+  },
+  gc_whisperer: {
+    icon: Users,
+    iconBg: "bg-orange-500",
+    name: "The GC Whisperer",
+    subtitle: "GC Relationships, Vendor Lists & Industry Politics",
+    prompts: [
+      "How do I get on a GC's preferred bid list?",
+      "I keep bidding but never getting awarded. Why?",
+      "Help me prepare for an industry networking event",
+      "A new PM took over my project -- how do I handle it?",
+      "Which GCs should I be targeting in my market?",
+      "How do I build a relationship with a GC I've never worked with?",
     ],
   },
   prospector: {

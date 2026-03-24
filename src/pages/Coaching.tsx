@@ -37,7 +37,7 @@ const COACHES = [
     icon: Users,
     color: "text-orange-600",
     bg: "bg-orange-50",
-    available: false,
+    available: true,
   },
 ];
 
