@@ -142,7 +142,7 @@ export function useFederalContracts(userId: string | undefined) {
       if (c.response_deadline && new Date(c.response_deadline) <= now) return false;
       // Texas + national (null state) only — radius geocoding is Phase 2
       const state = c.place_of_performance?.state?.toUpperCase();
-      return !state || state === "TX";
+      return state === "TX";
     });
 
     setContracts(filtered);
