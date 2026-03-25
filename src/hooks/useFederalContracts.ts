@@ -140,9 +140,9 @@ export function useFederalContracts(userId: string | undefined) {
     const filtered = mapped.filter((c) => {
       // Drop expired contracts
       if (c.response_deadline && new Date(c.response_deadline) <= now) return false;
-      // Texas + national (null state) only — radius geocoding is Phase 2
+      // Texas + national/unspecified (null state) — radius geocoding is Phase 2
       const state = c.place_of_performance?.state?.toUpperCase();
-      return state === "TX";
+      return !state || state === "TX";
     });
 
     setContracts(filtered);
