@@ -150,7 +150,7 @@ export function AuthPage() {
                     {loading ? "Creating Account..." : "Create Account"}
                   </Button>
                   <p className="text-xs text-gray-500 text-center">
-                    14-day free trial. No credit card required.
+                    Please use the same email you used to start your trial
                   </p>
                 </form>
               </TabsContent>
