@@ -15,8 +15,14 @@ import Coaching from "@/pages/Coaching.tsx";
 import SettingsPage from "@/pages/Settings.tsx";
 import ProposalSign from "@/pages/ProposalSign.tsx";
 import Opportunities from "@/pages/Opportunities.tsx";
+import VSLPage from "@/pages/VSLPage.tsx";
 
 const router = createBrowserRouter([
+  // Standalone VSL page -- no app shell, no auth
+  {
+    path: "/vsl",
+    element: <VSLPage />,
+  },
   {
     path: "/",
     element: <Providers />,
