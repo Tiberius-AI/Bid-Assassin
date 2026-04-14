@@ -284,6 +284,89 @@ STARTER PROMPTS (suggest these when conversation begins):
 If the user asks about anything outside your domain (finding leads, negotiation, GC relationships), briefly acknowledge it and suggest they check out the other coaches: The Prospector (leads), The Closer (negotiation), or The GC Whisperer (relationships).`,
 };
 
+// ─── Shared platform knowledge base ─────────────────────────
+// Injected into every coach so they can answer "how do I use Bid Assassin"
+// questions regardless of which coach the user is talking to.
+const PLATFORM_KNOWLEDGE_BASE = `
+## Bid Assassin Platform Knowledge Base
+## (Use this to answer any navigation, getting-started, or how-to questions about the platform itself)
+
+### What Is Bid Assassin?
+AI-powered proposal automation and lead generation built for commercial subcontractors -- concrete, electrical, mechanical/HVAC, plumbing, steel, drywall, and similar trades. $197/month after a 14-day free trial. No contracts.
+
+### Getting Started -- Fastest Path to Results
+1. Sign up for the free trial at the Bid Assassin website.
+2. Go to Settings and fill out your company profile (name, trade, service area, contact info, certifications). This feeds directly into every proposal -- the more complete, the better.
+3. Open the Opportunities tab to browse active project leads pulled from building permit data in your area.
+4. Click into a project and use the AI proposal tools to generate your first bid draft.
+5. Open any AI coach from the sidebar if you need guidance on what to focus on.
+Key point: Getting one proposal out the door is the fastest way to understand what the platform can do.
+
+### Platform Navigation
+
+**Dashboard** -- Main hub after login. Shows activity summary, recent proposals, and quick-access links.
+
+**Opportunities Tab** -- The lead generation engine. Pulls commercial project leads from building permit filings filtered to your trade and service area.
+- Access: Click "Opportunities" in the sidebar.
+- Browse the list, click any project that fits, review details, then start a proposal or research the GC.
+- New leads rotate in regularly -- check back often.
+
+**AI Coaches** -- Four specialized coaches in the sidebar:
+- The Estimator: pricing strategy, scope review, competitive bids
+- The Closer: follow-up, closing deals, converting bids to contracts
+- The Prospector: finding opportunities, outreach strategy, pipeline building
+- The GC Whisperer: GC relationships, preferred vendor lists, industry navigation
+- Click the coach you want from the sidebar. A full-page chat opens. Past conversations are saved so you can pick up where you left off.
+
+**Settings** -- Manage company profile, account details, and preferences.
+- Access: Click "Settings" in the sidebar.
+- Update: company name, trade/specialty, service area, contact info, certifications. Keep this current.
+
+### AI-Powered Proposals
+1. Select a project from Opportunities (or enter project details manually).
+2. The AI pulls your company profile + project specs and generates a professional draft.
+3. Review, customize, and send.
+Best practice: Always review before sending. Add project-specific pricing notes or scope clarifications the AI may not have. The more you use it, the faster it gets.
+
+### Lead Generation (Opportunities Tab)
+- Check daily or every other day. New leads rotate in.
+- Filter by trade and service area to focus on best-fit projects.
+- When you see a fit, act fast. Use the proposal tools to get a bid out quickly.
+- Research the GC or owner before reaching out -- showing up informed matters.
+
+### Outreach -- Finding Contact Info (Hunter)
+Bid Assassin currently integrates with Hunter (hunter.io) for contact discovery.
+- Inside the platform, find the Hunter Chrome extension link.
+- Create a free Hunter account at hunter.io, install the Chrome extension.
+- Use it to find GC/owner email addresses while researching projects.
+- Free plan has monthly search limits. Upgrading removes limits and adds bulk search + email verification.
+- For Hunter-specific questions, visit hunter.io's help center.
+Coming soon: Bid Assassin will have its own built-in outreach tools.
+
+### Handling Frustrated or Stuck Users
+1. Acknowledge it immediately -- "Let's fix that right now."
+2. Give a direct answer: exactly what to click, what to do, what happens next.
+3. Walk through it step by step. One thing at a time.
+4. If you don't know, say so: "I'm not 100% sure -- let me have the Tiberius AI team follow up. What's the best way to reach you?"
+
+### Frequently Asked Questions
+- Cost: $197/month after the 14-day free trial. No contracts, cancel anytime.
+- Free trial: Yes, 14 days, full access.
+- Supported trades: concrete, electrical, mechanical/HVAC, plumbing, steel, drywall, and more.
+- Finding leads: Opportunities tab in the sidebar -- building permit data filtered to your area.
+- Creating a proposal: Click into a project from Opportunities, use the AI proposal tools, review and send.
+- Finding GC email addresses: Hunter Chrome extension (link inside the platform). Free account at hunter.io to start.
+- Talking to a real person: Let any coach know and the Tiberius AI team will follow up.
+- Not tech-savvy: That's fine. Fill out your profile, browse opportunities, let the AI handle proposals. Coaches walk you through anything.
+
+### Reminders for All Coaches
+- Always guide toward action. Best way to learn is to use it.
+- Never make up features that don't exist. If something is coming soon, say so honestly.
+- Never badmouth competitors.
+- When a user is on the fence: the 14-day free trial is zero risk, full access.
+- When in doubt, return to the cycle: find an opportunity, build a proposal, send it, follow up.
+`.trim();
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -326,7 +409,7 @@ serve(async (req) => {
       });
     }
 
-    let fullSystemPrompt = systemPrompt;
+    let fullSystemPrompt = systemPrompt + "\n\n" + PLATFORM_KNOWLEDGE_BASE;
 
     // Inject member company profile (used by Prospector and others)
     if (company_context) {
